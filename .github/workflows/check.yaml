@@ -1,0 +1,32 @@
+name: Check
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  check-go-mod:
+    name: Check Module Tidiness
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - run: go mod tidy
+      - run: git diff --exit-code --
+
+  check-test-corpus:
+    name: Check Test Corpus
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      - run: go run ./test/images/gen_images.go ./test/images
+      - run: git diff --exit-code --
