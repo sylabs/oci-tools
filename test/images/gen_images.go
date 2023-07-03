@@ -19,6 +19,8 @@ import (
 )
 
 // Use a fixed digest, so that this is repeatable.
+//
+//nolint:gochecknoglobals, lll
 var helloWorldRef = name.MustParseReference("hello-world@sha256:00e1ee7c898a2c393ea2fe7680938f8dcbe55e51fbf08032cf37326a677f92ed")
 
 func generateImages(path string) error {
