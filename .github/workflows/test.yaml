@@ -21,6 +21,7 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
+      - run: sudo apt-get install -qy squashfs-tools squashfs-tools-ng
       - run: go test ./...
 
   release-test:
