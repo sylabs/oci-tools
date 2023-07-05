@@ -1,0 +1,10 @@
+release:
+  github:
+    owner: sylabs
+    name: oci-tools
+
+changelog:
+  use: github-native
+
+builds:
+  - skip: true

@@ -1,4 +1,4 @@
-name: Code Style
+name: Style
 
 on:
   pull_request:
@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
+          check-latest: true
       - uses: golangci/golangci-lint-action@v3
         with:
           version: v1.53

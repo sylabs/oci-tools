@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
+          check-latest: true
       - run: go mod tidy
       - run: git diff --exit-code --
 
@@ -28,5 +29,20 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '1.20'
+          check-latest: true
       - run: go run ./test/images/gen_images.go ./test/images
       - run: git diff --exit-code --
+
+  check-release-config:
+    name: Check Release Config
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          check-latest: true
+      - uses: goreleaser/goreleaser-action@v4
+        with:
+          args: check
