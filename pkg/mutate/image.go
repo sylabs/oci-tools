@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -16,19 +17,24 @@ import (
 )
 
 type image struct {
-	base      v1.Image
-	overrides []v1.Layer
-	history   *v1.History
+	base               v1.Image
+	overrides          []v1.Layer
+	history            *v1.History
+	configFileOverride any
+	configTypeOverride types.MediaType
 
-	computed   bool
-	diffIDs    []v1.Hash
-	byDiffID   map[v1.Hash]v1.Layer
-	byDigest   map[v1.Hash]v1.Layer
-	manifest   *v1.Manifest
-	configFile *v1.ConfigFile
+	computed      bool
+	diffIDs       []v1.Hash
+	byDiffID      map[v1.Hash]v1.Layer
+	byDigest      map[v1.Hash]v1.Layer
+	manifest      *v1.Manifest
+	configFile    any
+	rawConfigFile []byte
 
 	sync.Mutex
 }
+
+var errUnexpectedConfigFileType = errors.New("unexpected config file type")
 
 // populate populates various fields in img.
 func (img *image) populate() error {
@@ -38,12 +44,6 @@ func (img *image) populate() error {
 	if img.computed {
 		return nil
 	}
-
-	configFile, err := img.base.ConfigFile()
-	if err != nil {
-		return err
-	}
-	configFile = configFile.DeepCopy()
 
 	manifest, err := img.base.Manifest()
 	if err != nil {
@@ -83,22 +83,67 @@ func (img *image) populate() error {
 	}
 
 	manifest.Layers = layers
-	configFile.RootFS.DiffIDs = diffIDs
 
-	// Replace history, if applicable.
-	if img.history != nil {
-		configFile.History = []v1.History{*img.history}
+	configFile := img.configFileOverride
+	configType := img.configTypeOverride
+
+	// If configFile is not overridden, populate from the base image.
+	if configFile == nil {
+		configType = manifest.Config.MediaType
+
+		if configType.IsConfig() {
+			cf, err := img.base.ConfigFile()
+			if err != nil {
+				return err
+			}
+
+			configFile = cf
+		}
 	}
 
-	config, err := json.Marshal(configFile)
-	if err != nil {
-		return err
+	// If configType is one of the standard formats, mutate it if requested.
+	if configType.IsConfig() {
+		cf, ok := configFile.(*v1.ConfigFile)
+		if !ok {
+			return fmt.Errorf("%w: %T", errUnexpectedConfigFileType, configFile)
+		}
+
+		cf = cf.DeepCopy()
+
+		cf.RootFS.DiffIDs = diffIDs
+
+		// Replace history, if applicable.
+		if img.history != nil {
+			cf.History = []v1.History{*img.history}
+		}
+
+		configFile = cf
+	}
+
+	// Populate raw config.
+	var config []byte
+
+	if configFile != nil {
+		b, err := json.Marshal(configFile)
+		if err != nil {
+			return err
+		}
+
+		config = b
+	} else {
+		b, err := img.base.RawConfigFile()
+		if err != nil {
+			return err
+		}
+
+		config = b
 	}
 
 	digest, size, err := v1.SHA256(bytes.NewBuffer(config))
 	if err != nil {
 		return err
 	}
+	manifest.Config.MediaType = configType
 	manifest.Config.Digest = digest
 	manifest.Config.Size = size
 
@@ -112,6 +157,7 @@ func (img *image) populate() error {
 	img.byDigest = byDigest
 	img.manifest = manifest
 	img.configFile = configFile
+	img.rawConfigFile = config
 
 	return nil
 }
@@ -123,19 +169,11 @@ func (img *image) MediaType() (types.MediaType, error) {
 
 // Size returns the size of the manifest.
 func (img *image) Size() (int64, error) {
-	if err := img.populate(); err != nil {
-		return 0, err
-	}
-
 	return partial.Size(img)
 }
 
 // Digest returns the sha256 of this image's manifest.
 func (img *image) Digest() (v1.Hash, error) {
-	if err := img.populate(); err != nil {
-		return v1.Hash{}, err
-	}
-
 	return partial.Digest(img)
 }
 
@@ -160,10 +198,6 @@ func (img *image) RawManifest() ([]byte, error) {
 // ConfigName returns the hash of the image's config file, also known as
 // the Image ID.
 func (img *image) ConfigName() (v1.Hash, error) {
-	if err := img.populate(); err != nil {
-		return v1.Hash{}, err
-	}
-
 	return partial.ConfigName(img)
 }
 
@@ -173,7 +207,12 @@ func (img *image) ConfigFile() (*v1.ConfigFile, error) {
 		return nil, err
 	}
 
-	return img.configFile, nil
+	cf, ok := img.configFile.(*v1.ConfigFile)
+	if !ok {
+		return nil, fmt.Errorf("%w: %T", errUnexpectedConfigFileType, img.configFile)
+	}
+
+	return cf, nil
 }
 
 // RawConfigFile returns the serialized bytes of ConfigFile().
@@ -182,7 +221,7 @@ func (img *image) RawConfigFile() ([]byte, error) {
 		return nil, err
 	}
 
-	return json.Marshal(img.configFile)
+	return img.rawConfigFile, nil
 }
 
 // Layers returns the ordered collection of filesystem layers that comprise this image.

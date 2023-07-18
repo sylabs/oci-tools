@@ -90,6 +90,38 @@ func Test_image_populate(t *testing.T) { //nolint:gocognit
 			wantLayerDigest: testHash(t, "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"),
 			wantLayerDiffID: testHash(t, "efb53921da3394806160641b72a2cbd34ca1a9a8345ac670a85a04ad3d0e3507"),
 		},
+		{
+			name: "ConfigCustom",
+			img: &image{
+				base:               img,
+				overrides:          make([]v1.Layer, 1),
+				configFileOverride: struct{ Foo string }{"Bar"},
+				configTypeOverride: "application/vnd.sylabs.container.image.v1+json",
+			},
+			wantMediaType:   types.DockerManifestSchema2,
+			wantSize:        423,
+			wantDigest:      testHash(t, "9b0fbd79519d20b1496d49988874d36a0043304eaf908e5e69bcb40d41a1008b"),
+			wantConfigName:  testHash(t, "424add9fc04ecc6d39b2c12ee958299e93fa55bd29f0b10cb65b2baefaeea402"),
+			wantLayers:      1,
+			wantLayerDigest: testHash(t, "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"),
+			wantLayerDiffID: testHash(t, "efb53921da3394806160641b72a2cbd34ca1a9a8345ac670a85a04ad3d0e3507"),
+		},
+		{
+			name: "ConfigDocker",
+			img: &image{
+				base:               img,
+				overrides:          make([]v1.Layer, 1),
+				configFileOverride: &v1.ConfigFile{Author: "Author"},
+				configTypeOverride: types.DockerConfigJSON,
+			},
+			wantMediaType:   types.DockerManifestSchema2,
+			wantSize:        424,
+			wantDigest:      testHash(t, "b44f9c2b2a0d66ec3cdc16306d00264337365f338e6146689622faee27160f14"),
+			wantConfigName:  testHash(t, "504a39d1f5444559ddacac51de4ddd94f20e1021719567a159cc9188a316e6ea"),
+			wantLayers:      1,
+			wantLayerDigest: testHash(t, "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"),
+			wantLayerDiffID: testHash(t, "efb53921da3394806160641b72a2cbd34ca1a9a8345ac670a85a04ad3d0e3507"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,24 +177,29 @@ func Test_image_populate(t *testing.T) { //nolint:gocognit
 				t.Errorf("got config name %v, want %v", got, want)
 			}
 
-			configFile, err := tt.img.ConfigFile()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got, want := configFile, tt.img.configFile; !reflect.DeepEqual(got, want) {
-				t.Errorf("got config file %+v, want %+v", got, want)
+			if _, ok := tt.img.configFile.(*v1.ConfigFile); ok {
+				configFile, err := tt.img.ConfigFile()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got, want := configFile, tt.img.configFile; !reflect.DeepEqual(got, want) {
+					t.Errorf("got config file %+v, want %+v", got, want)
+				}
 			}
 
 			rawConfigFile, err := tt.img.RawConfigFile()
 			if err != nil {
 				t.Fatal(err)
 			}
-			var c v1.ConfigFile
-			if err := json.Unmarshal(rawConfigFile, &c); err != nil {
-				t.Fatal(err)
-			}
-			if got, want := c, *tt.img.configFile; !reflect.DeepEqual(got, want) {
-				t.Errorf("got config file %+v, want %+v", got, want)
+
+			if _, ok := tt.img.configFile.(*v1.ConfigFile); ok {
+				var c v1.ConfigFile
+				if err := json.Unmarshal(rawConfigFile, &c); err != nil {
+					t.Fatal(err)
+				}
+				if got, want := &c, tt.img.configFile; !reflect.DeepEqual(got, want) {
+					t.Errorf("got config file %+v, want %+v", got, want)
+				}
 			}
 
 			layers, err := tt.img.Layers()
