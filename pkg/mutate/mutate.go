@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type Mutation func(*image) error
@@ -40,6 +41,15 @@ func ReplaceLayers(l v1.Layer) Mutation {
 func SetHistory(history v1.History) Mutation {
 	return func(img *image) error {
 		img.history = &history
+		return nil
+	}
+}
+
+// SetConfig replaces the config with the specified raw content of type t.
+func SetConfig(configFile any, configType types.MediaType) Mutation {
+	return func(img *image) error {
+		img.configFileOverride = configFile
+		img.configTypeOverride = configType
 		return nil
 	}
 }

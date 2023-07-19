@@ -57,6 +57,20 @@ func TestApply(t *testing.T) {
 				}),
 			},
 		},
+		{
+			name: "SetConfigCustom",
+			base: img,
+			ms: []Mutation{
+				SetConfig(struct{ Foo string }{"Bar"}, "application/vnd.sylabs.container.image.v1+json"),
+			},
+		},
+		{
+			name: "SetConfigDocker",
+			base: img,
+			ms: []Mutation{
+				SetConfig(&v1.ConfigFile{Author: "Author"}, types.DockerConfigJSON),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
