@@ -19,37 +19,65 @@ import (
 
 const layerMediaType types.MediaType = "application/vnd.sylabs.image.layer.v1.squashfs"
 
-// SquashfsLayer converts the base layer into a layer using the squashfs format. A dir must be
-// specified, which is used as a working directory during conversion. The caller is responsible for
-// cleaning up dir.
-func SquashfsLayer(base v1.Layer, dir string) (v1.Layer, error) {
-	path, err := exec.LookPath("tar2sqfs")
-	if err != nil {
-		if path, err = exec.LookPath("sqfstar"); err != nil {
-			return nil, err
-		}
-	}
-
-	return squashfsFromLayer(base, path, dir)
-}
-
 type squashfsConverter struct {
 	converter string   // Path to converter program.
 	args      []string // Arguments required for converter program.
 	dir       string   // Working directory.
 }
 
+// SquashfsConverterOpt are used to specify squashfs converter options.
+type SquashfsConverterOpt func(*squashfsConverter) error
+
+// OptSquashfsLayerConverter specifies the converter program to use when converting from TAR to
+// SquashFS format.
+func OptSquashfsLayerConverter(converter string) SquashfsConverterOpt {
+	return func(c *squashfsConverter) error {
+		path, err := exec.LookPath(converter)
+		if err != nil {
+			return err
+		}
+
+		c.converter = path
+
+		return nil
+	}
+}
+
 var errSquashfsConverterNotSupported = errors.New("squashfs converter not supported")
 
-// squashfsFromLayer converts the base layer into a layer using the squashfs format. The path to a
-// conversion program and a working directory must be specified.
-func squashfsFromLayer(base v1.Layer, converter, dir string) (v1.Layer, error) {
-	var args []string
+// SquashfsLayer converts the base layer into a layer using the squashfs format. A dir must be
+// specified, which is used as a working directory during conversion. The caller is responsible for
+// cleaning up dir.
+//
+// By default, this will attempt to locate a suitable TAR to SquashFS converter such as 'tar2sqfs'
+// or `sqfstar` via exec.LookPath. To specify a path to a specific converter program, consider
+// using OptSquashfsLayerConverter.
+func SquashfsLayer(base v1.Layer, dir string, opts ...SquashfsConverterOpt) (v1.Layer, error) {
+	c := squashfsConverter{
+		dir: dir,
+	}
 
-	switch base := filepath.Base(converter); base {
+	for _, opt := range opts {
+		if err := opt(&c); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.converter == "" {
+		path, err := exec.LookPath("tar2sqfs")
+		if err != nil {
+			if path, err = exec.LookPath("sqfstar"); err != nil {
+				return nil, err
+			}
+		}
+
+		c.converter = path
+	}
+
+	switch base := filepath.Base(c.converter); base {
 	case "tar2sqfs":
 		// Use gzip compression instead of the default (xz).
-		args = []string{
+		c.args = []string{
 			"--compressor", "gzip",
 		}
 
@@ -60,7 +88,7 @@ func squashfsFromLayer(base v1.Layer, converter, dir string) (v1.Layer, error) {
 		//
 		// The options below modify this behaviour to instead use predictable values, but
 		// unfortunately they do not function correctly with squashfs-tools v4.5.
-		args = []string{
+		c.args = []string{
 			"-mkfs-time", "0",
 			"-root-time", "0",
 			"-root-uid", "0",
@@ -70,12 +98,6 @@ func squashfsFromLayer(base v1.Layer, converter, dir string) (v1.Layer, error) {
 
 	default:
 		return nil, fmt.Errorf("%v: %w", base, errSquashfsConverterNotSupported)
-	}
-
-	c := &squashfsConverter{
-		converter: converter,
-		args:      args,
-		dir:       dir,
 	}
 
 	return c.layer(base)

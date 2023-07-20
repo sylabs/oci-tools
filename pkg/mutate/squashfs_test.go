@@ -47,7 +47,7 @@ func diffSquashFS(tb testing.TB, pathA, pathB string, diffArgs ...string) {
 	}
 }
 
-func Test_squashfsFromLayer(t *testing.T) {
+func Test_SquashfsLayer(t *testing.T) {
 	tests := []struct {
 		name      string
 		layer     v1.Layer
@@ -82,7 +82,7 @@ func Test_squashfsFromLayer(t *testing.T) {
 				t.Skip(err)
 			}
 
-			l, err := squashfsFromLayer(tt.layer, tt.converter, t.TempDir())
+			l, err := SquashfsLayer(tt.layer, t.TempDir(), OptSquashfsLayerConverter(tt.converter))
 			if err != nil {
 				t.Fatal(err)
 			}
