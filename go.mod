@@ -6,7 +6,7 @@ require (
 	github.com/anchore/stereoscope v0.0.0-20230627195312-cd49355d934e
 	github.com/google/go-containerregistry v0.16.1
 	github.com/sebdah/goldie/v2 v2.5.3
-	github.com/sylabs/sif/v2 v2.11.6-0.20230615203820-9fe9b624c3fd
+	github.com/sylabs/sif/v2 v2.12.0
 )
 
 require (
@@ -48,14 +48,14 @@ require (
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	github.com/wagoodman/go-partybus v0.0.0-20200526224238-eb215533f07d // indirect
 	github.com/wagoodman/go-progress v0.0.0-20230301185719-21920a456ad5 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.55.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 )
