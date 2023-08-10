@@ -3,7 +3,7 @@ module github.com/sylabs/oci-tools
 go 1.19
 
 require (
-	github.com/anchore/stereoscope v0.0.0-20230627195312-cd49355d934e
+	github.com/anchore/stereoscope v0.0.0-20230727211946-d1f3d766295e
 	github.com/google/go-containerregistry v0.16.1
 	github.com/sebdah/goldie/v2 v2.5.3
 	github.com/sylabs/sif/v2 v2.12.0
