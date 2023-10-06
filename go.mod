@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/google/go-containerregistry v0.16.1
 	github.com/sebdah/goldie/v2 v2.5.3
-	github.com/sylabs/sif/v2 v2.14.1
+	github.com/sylabs/sif/v2 v2.15.0
 )
 
 require (
