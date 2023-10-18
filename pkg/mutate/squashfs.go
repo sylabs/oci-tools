@@ -20,9 +20,10 @@ import (
 const layerMediaType types.MediaType = "application/vnd.sylabs.image.layer.v1.squashfs"
 
 type squashfsConverter struct {
-	converter string   // Path to converter program.
-	args      []string // Arguments required for converter program.
-	dir       string   // Working directory.
+	converter         string   // Path to converter program.
+	args              []string // Arguments required for converter program.
+	dir               string   // Working directory.
+	noConvertWhiteout bool     // Skip default conversion of whiteout markers from AUFS -> OverlayFS
 }
 
 // SquashfsConverterOpt are used to specify squashfs converter options.
@@ -45,6 +46,15 @@ func OptSquashfsLayerConverter(converter string) SquashfsConverterOpt {
 
 var errSquashfsConverterNotSupported = errors.New("squashfs converter not supported")
 
+// OptNoConvertWhiteout is set to skip the default conversion of whiteout /
+// opaque markers from AUFS to OverlayFS format.
+func OptNoConvertWhiteout(b bool) SquashfsConverterOpt {
+	return func(c *squashfsConverter) error {
+		c.noConvertWhiteout = b
+		return nil
+	}
+}
+
 // SquashfsLayer converts the base layer into a layer using the squashfs format. A dir must be
 // specified, which is used as a working directory during conversion. The caller is responsible for
 // cleaning up dir.
@@ -52,6 +62,13 @@ var errSquashfsConverterNotSupported = errors.New("squashfs converter not suppor
 // By default, this will attempt to locate a suitable TAR to SquashFS converter such as 'tar2sqfs'
 // or `sqfstar` via exec.LookPath. To specify a path to a specific converter program, consider
 // using OptSquashfsLayerConverter.
+//
+// By default, AUFS whiteout markers in the base TAR layer will be converted to OverlayFS whiteout
+// markers in the SquashFS layer. This can be disabled, e.g. where it is known that the layer is
+// part of a squashed image that will not have any whiteouts, using OptNoConvertWhiteout.
+//
+// Note - when whiteout conversion is performed the base layer will be read twice. Callers should
+// ensure it is cached, and is not a streaming layer.
 func SquashfsLayer(base v1.Layer, dir string, opts ...SquashfsConverterOpt) (v1.Layer, error) {
 	c := squashfsConverter{
 		dir: dir,
@@ -124,6 +141,53 @@ func (c *squashfsConverter) makeSquashfs(r io.Reader) (string, error) {
 	return path, nil
 }
 
+// convertWhiteout accepts a Layer l and returns:
+//
+//   - A ReadCloser providing the layer tar, passed through a filter that converts
+//     whiteout markers from AUFS -> OverlayFS, if c.noConvertWhiteout is false.
+//     In this case, any error from the filter will propagate via the returned channel.
+//   - A ReadCloser providing the layer tar directly, if c.noConvertWhiteout is true.
+//
+// Note that when conversion is performed, the layer is read twice.
+func (c *squashfsConverter) convertWhiteout(l v1.Layer) (io.ReadCloser, chan error, error) {
+	rc, err := l.Uncompressed()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// No conversion - direct tar stream from the layer.
+	if c.noConvertWhiteout {
+		return rc, nil, nil
+	}
+
+	// Conversion - first, scan for opaque directories and presence of file
+	// whiteout markers.
+	opaquePaths, fileWhiteout, err := scanAUFSWhiteouts(rc)
+	if err != nil {
+		return nil, nil, err
+	}
+	rc.Close()
+
+	rc, err = l.Uncompressed()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Nothing found to filter
+	if len(opaquePaths) == 0 && !fileWhiteout {
+		return rc, nil, nil
+	}
+
+	filterErr := make(chan error, 1)
+	pr, pw := io.Pipe()
+	go func() {
+		defer rc.Close()
+		filterErr <- whiteoutFilter(rc, pw, opaquePaths)
+		close(filterErr)
+	}()
+	return pr, filterErr, nil
+}
+
 type squashfsLayer struct {
 	base      v1.Layer
 	converter *squashfsConverter
@@ -170,7 +234,7 @@ func (l *squashfsLayer) populate() error {
 		return nil
 	}
 
-	rc, err := l.base.Uncompressed()
+	rc, filterErr, err := l.converter.convertWhiteout(l.base)
 	if err != nil {
 		return err
 	}
@@ -179,6 +243,12 @@ func (l *squashfsLayer) populate() error {
 	path, err := l.converter.makeSquashfs(rc)
 	if err != nil {
 		return err
+	}
+
+	if filterErr != nil {
+		if err = <-filterErr; err != nil {
+			return err
+		}
 	}
 
 	f, err := os.Open(path)

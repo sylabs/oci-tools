@@ -49,18 +49,21 @@ func diffSquashFS(tb testing.TB, pathA, pathB string, diffArgs ...string) {
 
 func Test_SquashfsLayer(t *testing.T) {
 	tests := []struct {
-		name      string
-		layer     v1.Layer
-		converter string
-		diffArgs  []string
+		name              string
+		layer             v1.Layer
+		converter         string
+		noConvertWhiteout bool
+		diffArgs          []string
 	}{
+		// HelloWorld layer contains no whiteouts - conversion should have no effect on output.
 		{
 			name: "HelloWorldBlob_sqfstar",
 			layer: testLayer(t, "hello-world-docker-v2-manifest", v1.Hash{
 				Algorithm: "sha256",
 				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
 			}),
-			converter: "sqfstar",
+			converter:         "sqfstar",
+			noConvertWhiteout: false,
 			// Some versions of squashfs-tools do not implement '-root-uid'/'-root-gid', so ignore
 			// differences in ownership.
 			diffArgs: []string{"--no-owner"},
@@ -71,7 +74,89 @@ func Test_SquashfsLayer(t *testing.T) {
 				Algorithm: "sha256",
 				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
 			}),
-			converter: "tar2sqfs",
+			converter:         "tar2sqfs",
+			noConvertWhiteout: false,
+		},
+		{
+			name: "HelloWorldBlob_sqfstar_noConvertWhiteout",
+			layer: testLayer(t, "hello-world-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
+			}),
+			converter:         "sqfstar",
+			noConvertWhiteout: true,
+			// Some versions of squashfs-tools do not implement '-root-uid'/'-root-gid', so ignore
+			// differences in ownership.
+			diffArgs: []string{"--no-owner"},
+		},
+		{
+			name: "HelloWorldBlob_tar2sqfs_noConvertWhiteout",
+			layer: testLayer(t, "hello-world-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
+			}),
+			converter:         "tar2sqfs",
+			noConvertWhiteout: true,
+		},
+		// AUFS layer contains whiteouts. Should be converted to overlayfs form when noConvertWhiteout = false.
+		//
+		//    Original (AUFS)
+		//		All regular files.
+		//
+		//        [drwxr-xr-x]  .
+		//			├── [drwxr-xr-x]  dir
+		//			│   └── [-rw-r--r--]  .wh..wh..opq
+		//			└── [-rw-r--r--]  .wh.file
+		//
+		//    Converted (OverlayFS)
+		//		.wh.file becomes file as a char 0:0 device
+		// 		dir/.wh..wh..opq becomes trusted.overlay.opaque="y" xattr on dir
+		//
+		//			[drwxr-xr-x]  .
+		//			├── [drwxr-xr-x]  dir
+		//			└── [crw-r--r--]  file
+		//
+		{
+			name: "AUFSBlob_sqfstar",
+			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
+			}),
+			converter:         "sqfstar",
+			noConvertWhiteout: false,
+			// Some versions of squashfs-tools do not implement '-root-uid'/'-root-gid', so ignore
+			// differences in ownership.
+			diffArgs: []string{"--no-owner"},
+		},
+		{
+			name: "AUFSBlob_tar2sqfs",
+			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
+			}),
+			converter:         "tar2sqfs",
+			noConvertWhiteout: false,
+		},
+		{
+			name: "AUFSBlob_sqfstar_noConvertWhiteout",
+			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
+			}),
+			converter:         "sqfstar",
+			noConvertWhiteout: true,
+			// Some versions of squashfs-tools do not implement '-root-uid'/'-root-gid', so ignore
+			// differences in ownership.
+			diffArgs: []string{"--no-owner"},
+		},
+		{
+			name: "AUFSBlob_tar2sqfs_noConvertWhiteout",
+			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
+			}),
+			converter:         "tar2sqfs",
+			noConvertWhiteout: true,
 		},
 	}
 	for _, tt := range tests {
@@ -82,7 +167,10 @@ func Test_SquashfsLayer(t *testing.T) {
 				t.Skip(err)
 			}
 
-			l, err := SquashfsLayer(tt.layer, t.TempDir(), OptSquashfsLayerConverter(tt.converter))
+			l, err := SquashfsLayer(tt.layer, t.TempDir(),
+				OptSquashfsLayerConverter(tt.converter),
+				OptNoConvertWhiteout(tt.noConvertWhiteout),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
