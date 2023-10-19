@@ -78,7 +78,7 @@ func Test_SquashfsLayer(t *testing.T) {
 			noConvertWhiteout: false,
 		},
 		{
-			name: "HelloWorldBlob_sqfstar_noConvertWhiteout",
+			name: "HelloWorldBlob_sqfstar_SkipWhiteoutConversion",
 			layer: testLayer(t, "hello-world-docker-v2-manifest", v1.Hash{
 				Algorithm: "sha256",
 				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
@@ -90,7 +90,7 @@ func Test_SquashfsLayer(t *testing.T) {
 			diffArgs: []string{"--no-owner"},
 		},
 		{
-			name: "HelloWorldBlob_tar2sqfs_noConvertWhiteout",
+			name: "HelloWorldBlob_tar2sqfs_SkipWhiteoutConversion",
 			layer: testLayer(t, "hello-world-docker-v2-manifest", v1.Hash{
 				Algorithm: "sha256",
 				Hex:       "7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
@@ -138,7 +138,7 @@ func Test_SquashfsLayer(t *testing.T) {
 			noConvertWhiteout: false,
 		},
 		{
-			name: "AUFSBlob_sqfstar_noConvertWhiteout",
+			name: "AUFSBlob_sqfstar_SkipWhiteoutConversion",
 			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
 				Algorithm: "sha256",
 				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
@@ -150,7 +150,7 @@ func Test_SquashfsLayer(t *testing.T) {
 			diffArgs: []string{"--no-owner"},
 		},
 		{
-			name: "AUFSBlob_tar2sqfs_noConvertWhiteout",
+			name: "AUFSBlob_tar2sqfs_SkipWhiteoutConversion",
 			layer: testLayer(t, "aufs-docker-v2-manifest", v1.Hash{
 				Algorithm: "sha256",
 				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
@@ -169,7 +169,7 @@ func Test_SquashfsLayer(t *testing.T) {
 
 			l, err := SquashfsLayer(tt.layer, t.TempDir(),
 				OptSquashfsLayerConverter(tt.converter),
-				OptNoConvertWhiteout(tt.noConvertWhiteout),
+				OptSquashfsSkipWhiteoutConversion(tt.noConvertWhiteout),
 			)
 			if err != nil {
 				t.Fatal(err)

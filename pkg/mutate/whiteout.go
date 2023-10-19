@@ -56,10 +56,9 @@ func scanAUFSWhiteouts(in io.Reader) (map[string]bool, bool, error) {
 // markers with OverlayFS whiteout markers. Due to unrestricted ordering of
 // markers vs their target, the list of opaquePaths must be obtained prior to
 // filtering and provided to this filter.
-func whiteoutFilter(in io.ReadCloser, out io.WriteCloser, opaquePaths map[string]bool) error {
+func whiteoutFilter(in io.Reader, out io.Writer, opaquePaths map[string]bool) error {
 	tr := tar.NewReader(in)
 	tw := tar.NewWriter(out)
-	defer out.Close()
 	defer tw.Close()
 
 	for {
