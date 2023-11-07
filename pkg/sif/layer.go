@@ -39,7 +39,7 @@ func (l *layer) MediaType() (types.MediaType, error) {
 	return l.desc.MediaType, nil
 }
 
-// Descriptor implements partial.withDescriptor.
+// Descriptor returns the original descriptor from an image manifest. See partial.Descriptor.
 func (l *layer) Descriptor() (*v1.Descriptor, error) {
 	return &l.desc, nil
 }
