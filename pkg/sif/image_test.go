@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/validate"
 	"github.com/sylabs/oci-tools/pkg/sif"
 )
@@ -74,7 +73,7 @@ func Test_imageIndex_Image(t *testing.T) {
 				t.Error(err)
 			}
 
-			if d, err := partial.Descriptor(img); err != nil {
+			if d, err := img.(withDescriptor).Descriptor(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
 				t.Errorf("got descriptor %+v, want %+v", got, want)

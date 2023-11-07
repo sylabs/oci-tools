@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/sylabs/oci-tools/pkg/sif"
 )
 
 // layerFromPath returns a Layer for the test to use, populated from the OCI Image with the
@@ -66,10 +66,36 @@ func TestLayer_Descriptor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if d, err := partial.Descriptor(tt.l); err != nil {
+			if d, err := tt.l.(*sif.Layer).Descriptor(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
 				t.Errorf("got descriptor %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestLayer_Offset(t *testing.T) {
+	tests := []struct {
+		name       string
+		l          v1.Layer
+		wantOffset int64
+	}{
+		{
+			name: "DockerManifest",
+			l: layerFromPath(t, "hello-world-docker-v2-manifest",
+				"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338",
+				"sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
+			),
+			wantOffset: 32176,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if d, err := tt.l.(*sif.Layer).Offset(); err != nil {
+				t.Error(err)
+			} else if got, want := d, tt.wantOffset; !reflect.DeepEqual(got, want) {
+				t.Errorf("got offset %+v, want %+v", got, want)
 			}
 		})
 	}

@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
@@ -116,7 +115,7 @@ func (ix *imageIndex) Image(h v1.Hash) (v1.Image, error) {
 		desc:        desc,
 		rawManifest: b,
 	}
-	return partial.CompressedToImage(&img)
+	return &img, nil
 }
 
 // ImageIndex returns a v1.ImageIndex that this ImageIndex references.
