@@ -5,6 +5,7 @@
 package sif
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,7 +27,7 @@ func ImageIndexFromFileImage(fi *sif.FileImage) (v1.ImageIndex, error) {
 
 type imageIndex struct {
 	f           *fileImage
-	mediaType   types.MediaType
+	desc        *v1.Descriptor
 	rawManifest []byte
 }
 
@@ -44,26 +45,35 @@ func (f *fileImage) ImageIndex() (v1.ImageIndex, error) {
 		return nil, err
 	}
 
+	digest, size, err := v1.SHA256(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+
 	return &imageIndex{
-		f:           f,
-		mediaType:   types.OCIImageIndex,
+		f: f,
+		desc: &v1.Descriptor{
+			MediaType: types.OCIImageIndex,
+			Size:      size,
+			Digest:    digest,
+		},
 		rawManifest: b,
 	}, nil
 }
 
 // MediaType of this image's manifest.
 func (ix *imageIndex) MediaType() (types.MediaType, error) {
-	return ix.mediaType, nil
+	return ix.desc.MediaType, nil
 }
 
 // Digest returns the sha256 of this index's manifest.
 func (ix *imageIndex) Digest() (v1.Hash, error) {
-	return partial.Digest(ix)
+	return ix.desc.Digest, nil
 }
 
 // Size returns the size of the manifest.
 func (ix *imageIndex) Size() (int64, error) {
-	return partial.Size(ix)
+	return ix.desc.Size, nil
 }
 
 // IndexManifest returns this image index's manifest object.
@@ -76,6 +86,11 @@ func (ix *imageIndex) IndexManifest() (*v1.IndexManifest, error) {
 // RawManifest returns the serialized bytes of IndexManifest().
 func (ix *imageIndex) RawManifest() ([]byte, error) {
 	return ix.rawManifest, nil
+}
+
+// Descriptor returns the original descriptor from an index manifest. See partial.Descriptor.
+func (ix *imageIndex) Descriptor() (*v1.Descriptor, error) {
+	return ix.desc, nil
 }
 
 var errUnexpectedMediaType = errors.New("unexpected media type")
@@ -96,12 +111,12 @@ func (ix *imageIndex) Image(h v1.Hash) (v1.Image, error) {
 		return nil, err
 	}
 
-	img := &image{
+	img := image{
 		f:           ix.f,
 		desc:        desc,
 		rawManifest: b,
 	}
-	return partial.CompressedToImage(img)
+	return partial.CompressedToImage(&img)
 }
 
 // ImageIndex returns a v1.ImageIndex that this ImageIndex references.
@@ -122,8 +137,8 @@ func (ix *imageIndex) ImageIndex(h v1.Hash) (v1.ImageIndex, error) {
 
 	return &imageIndex{
 		f:           ix.f,
+		desc:        desc,
 		rawManifest: b,
-		mediaType:   desc.MediaType,
 	}, nil
 }
 

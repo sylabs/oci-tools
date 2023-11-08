@@ -46,6 +46,11 @@ func (im *image) RawManifest() ([]byte, error) {
 	return im.rawManifest, nil
 }
 
+// Descriptor returns the original descriptor from an index manifest. See partial.Descriptor.
+func (im *image) Descriptor() (*v1.Descriptor, error) {
+	return im.desc, nil
+}
+
 var errLayerNotFoundInImage = errors.New("layer not found in image")
 
 // LayerByDigest returns a Layer for interacting with a particular layer of the image, looking it
