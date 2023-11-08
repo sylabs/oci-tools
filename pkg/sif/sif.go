@@ -35,3 +35,13 @@ func (f *fileImage) Bytes(h v1.Hash) ([]byte, error) {
 
 	return d.GetData()
 }
+
+// Offset returns the offset within the SIF image of the blob with the supplied digest.
+func (f *fileImage) Offset(h v1.Hash) (int64, error) {
+	d, err := f.GetDescriptor(sif.WithOCIBlobDigest(h))
+	if err != nil {
+		return 0, err
+	}
+
+	return d.Offset(), nil
+}
