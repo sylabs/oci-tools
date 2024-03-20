@@ -21,6 +21,22 @@ func TestSquash(t *testing.T) {
 			name: "DockerManifest",
 			base: corpus.Image(t, "hello-world-docker-v2-manifest"),
 		},
+		{
+			name: "WhiteoutExplicitFile",
+			base: corpus.Image(t, "whiteout-explicit-file"),
+		},
+		{
+			name: "WhiteoutExplicitDir",
+			base: corpus.Image(t, "whiteout-explicit-dir"),
+		},
+		{
+			name: "WhiteoutOpaque",
+			base: corpus.Image(t, "whiteout-opaque"),
+		},
+		{
+			name: "WhiteoutOpaqueEnd",
+			base: corpus.Image(t, "whiteout-opaque-end"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

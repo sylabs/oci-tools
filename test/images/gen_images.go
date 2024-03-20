@@ -5,7 +5,9 @@
 package main
 
 import (
+	"archive/tar"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 )
 
 // Use a fixed digest, so that this is repeatable.
@@ -94,6 +97,165 @@ func generateIndexes(path string) error {
 	return nil
 }
 
+type tarEntry struct {
+	Typeflag byte
+	Name     string
+	Linkname string
+	Content  string
+}
+
+func (e tarEntry) Header() *tar.Header {
+	h := &tar.Header{
+		Typeflag: e.Typeflag,
+		Name:     e.Name,
+		Linkname: e.Linkname,
+		Mode:     0o555,
+		Size:     int64(len(e.Content)),
+		Format:   tar.FormatGNU,
+	}
+	if e.Typeflag == tar.TypeDir {
+		h.Mode = 0o755
+	}
+
+	return h
+}
+
+func writeLayerTAR(w io.Writer, tes []tarEntry) error {
+	tw := tar.NewWriter(w)
+
+	for _, te := range tes {
+		if err := tw.WriteHeader(te.Header()); err != nil {
+			return err
+		}
+
+		if te.Content != "" {
+			if _, err := io.WriteString(tw, te.Content); err != nil {
+				return err
+			}
+		}
+	}
+
+	return tw.Close()
+}
+
+func generateTARImages(path string) error {
+	images := []struct {
+		layers      [][]tarEntry
+		destination string
+	}{
+		// Image with explicit whiteout of file "a/b/foo". Implied contents:
+		//
+		//	a/
+		//	a/b
+		//	a/b/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.foo"},
+					{Typeflag: tar.TypeReg, Name: "a/b/bar", Content: "bar"},
+				},
+			},
+			destination: filepath.Join(path, "whiteout-explicit-file"),
+		},
+		// Image with explicit whiteout of directory "a/b/". Implied contents:
+		//
+		//	a/
+		//	a/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeReg, Name: "a/.wh.b"},
+					{Typeflag: tar.TypeReg, Name: "a/bar", Content: "bar"},
+				},
+			},
+			destination: filepath.Join(path, "whiteout-explicit-dir"),
+		},
+		// Image with opaque whiteout of directory "a/". Implied contents:
+		//
+		//	a/
+		//	a/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeReg, Name: "a/.wh..wh..opq"},
+					{Typeflag: tar.TypeReg, Name: "a/bar", Content: "bar"},
+				},
+			},
+			destination: filepath.Join(path, "whiteout-opaque"),
+		},
+		// Image with opaque whiteout of directory "a/" at the end of the layer. Implied contents:
+		//
+		//	a/
+		//	a/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeReg, Name: "a/bar", Content: "bar"},
+					{Typeflag: tar.TypeReg, Name: "a/.wh..wh..opq"},
+				},
+			},
+			destination: filepath.Join(path, "whiteout-opaque-end"),
+		},
+	}
+
+	for _, im := range images {
+		img := empty.Image
+
+		for _, layer := range im.layers {
+			opener := func() (io.ReadCloser, error) {
+				pr, pw := io.Pipe()
+				go func() {
+					pw.CloseWithError(writeLayerTAR(pw, layer))
+				}()
+				return pr, nil
+			}
+
+			l, err := tarball.LayerFromOpener(opener)
+			if err != nil {
+				return err
+			}
+
+			img, err = mutate.AppendLayers(img, l)
+			if err != nil {
+				return err
+			}
+		}
+
+		ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+
+		if _, err := layout.Write(im.destination, ii); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	path := "."
 	if len(os.Args) > 1 {
@@ -106,6 +268,11 @@ func main() {
 	}
 
 	if err := generateIndexes(path); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	if err := generateTARImages(path); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
