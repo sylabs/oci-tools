@@ -94,8 +94,8 @@ func TestLayer_Offset(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if d, err := tt.l.(*sif.Layer).Offset(); err != nil {
 				t.Error(err)
-			} else if got, want := d, tt.wantOffset; !reflect.DeepEqual(got, want) {
-				t.Errorf("got offset %+v, want %+v", got, want)
+			} else if got, want := d, tt.wantOffset; got != want {
+				t.Errorf("got offset %v, want %v", got, want)
 			}
 		})
 	}

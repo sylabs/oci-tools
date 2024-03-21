@@ -5,7 +5,7 @@
 package mutate
 
 import (
-	"reflect"
+	"maps"
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -58,7 +58,7 @@ func Test_scanAUFSOpaque(t *testing.T) {
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(tt.expectOpaque, opaque) {
+			if !maps.Equal(tt.expectOpaque, opaque) {
 				t.Errorf("opaque directories - expected: %v, got: %v", tt.expectOpaque, opaque)
 			}
 			if fileWhiteout != tt.expectFileWhiteout {
