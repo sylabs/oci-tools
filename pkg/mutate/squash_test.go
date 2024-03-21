@@ -37,6 +37,30 @@ func TestSquash(t *testing.T) {
 			name: "WhiteoutOpaqueEnd",
 			base: corpus.Image(t, "whiteout-opaque-end"),
 		},
+		{
+			name: "HardLink1",
+			base: corpus.Image(t, "hard-link-1"),
+		},
+		{
+			name: "HardLink2",
+			base: corpus.Image(t, "hard-link-2"),
+		},
+		{
+			name: "HardLinkDelete1",
+			base: corpus.Image(t, "hard-link-delete-1"),
+		},
+		{
+			name: "HardLinkDelete2",
+			base: corpus.Image(t, "hard-link-delete-2"),
+		},
+		{
+			name: "HardLinkDelete3",
+			base: corpus.Image(t, "hard-link-delete-3"),
+		},
+		{
+			name: "HardLinkDelete4",
+			base: corpus.Image(t, "hard-link-delete-4"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -221,6 +221,136 @@ func generateTARImages(path string) error {
 			},
 			destination: filepath.Join(path, "whiteout-opaque-end"),
 		},
+		// Image with a hard link to a regular file. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//	a/b/foo
+		//  a/b/bar => a/b/foo
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-1"),
+		},
+		// Image with a hard link to a regular file in a different layer. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//	a/b/foo
+		//  a/b/bar => a/b/foo
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-2"),
+		},
+		// Image with a hard link to a deleted regular file. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//  a/b/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.foo"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-delete-1"),
+		},
+		// Image with a deleted hard link to a regular file. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//	a/b/foo
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.bar"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-delete-2"),
+		},
+		// Image with a hard link chain to a deleted regular file. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//	a/b/bar
+		//	a/b/baz => a/b/bar
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeLink, Name: "a/b/baz", Linkname: "a/b/bar"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.foo"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-delete-3"),
+		},
+		// Image with a hard link chain to a deleted regular file. Implied contents:
+		//
+		//	a/
+		//	a/b/
+		//	a/b/foo
+		//	a/b/baz => a/b/foo
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo"},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeLink, Name: "a/b/baz", Linkname: "a/b/bar"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.bar"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-delete-4"),
+		},
 	}
 
 	for _, im := range images {
