@@ -22,8 +22,6 @@ func TestSquash(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
 			img, err := Squash(tt.base)
 			if err != nil {
