@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sebdah/goldie/v2"
 )
 
@@ -202,4 +204,65 @@ func Test_SquashfsLayer(t *testing.T) {
 			diffSquashFS(t, path, g.GoldenFileName(t, tt.name), tt.diffArgs...)
 		})
 	}
+}
+
+func Test_Squash_SquashfsLayer(t *testing.T) {
+	if _, err := exec.LookPath("sqfstar"); errors.Is(err, exec.ErrNotFound) {
+		t.Skip(err)
+	}
+
+	ref, err := name.ParseReference("busybox@sha256:4be429a5fbb2e71ae7958bfa558bc637cf3a61baf40a708cb8fff532b39e52d0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	im, err := remote.Image(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	im, err = Squash(im)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls, err := im.Layers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l, err := SquashfsLayer(ls[0], t.TempDir(),
+		OptSquashfsLayerConverter("sqfstar"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rc, err := l.Uncompressed()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { rc.Close() })
+
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(t.TempDir(), "layer.sqfs")
+
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	g := goldie.New(t, goldie.WithTestNameForDir(true))
+
+	// // Un-comment to regenerate golden files...
+	// b, err := os.ReadFile(path)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// g.Assert(t, t.Name(), b)
+
+	diffSquashFS(t, path, g.GoldenFileName(t, t.Name()), "--no-owner")
 }
