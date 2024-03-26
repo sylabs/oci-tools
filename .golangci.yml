@@ -8,6 +8,7 @@ linters:
     - bidichk
     - bodyclose
     - contextcheck
+    - copyloopvar
     - decorder
     - dogsled
     - dupl
@@ -38,6 +39,7 @@ linters:
     - grouper
     - ineffassign
     - interfacebloat
+    - intrange
     - lll
     - maintidx
     - mirror
