@@ -39,7 +39,7 @@ type imageState struct {
 	imageLinks map[string][]entry
 
 	// Whiteouts from the current layer. As each layer is committed, these are merged into
-	// imageEntries.
+	// imageShadows.
 	layerWhiteouts map[string]shadow
 
 	// Entries from the current layer that are not directories, hard links or whiteouts.
@@ -185,6 +185,12 @@ func (s *imageState) writeHardlinksFor(target string, root entry) (entry, error)
 				link.hdr.Size = root.hdr.Size
 				link.hdr.Devmajor = root.hdr.Devmajor
 				link.hdr.Devminor = root.hdr.Devminor
+
+				// If extended header records are present, copy those over.
+				if len(root.hdr.PAXRecords) > 0 {
+					link.hdr.PAXRecords = root.hdr.PAXRecords
+					link.hdr.Format = tar.FormatPAX
+				}
 
 				link.b = root.b
 

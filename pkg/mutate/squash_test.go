@@ -61,6 +61,10 @@ func TestSquash(t *testing.T) {
 			name: "HardLinkDelete4",
 			base: corpus.Image(t, "hard-link-delete-4"),
 		},
+		{
+			name: "HardLinkDeleteXattr",
+			base: corpus.Image(t, "hard-link-delete-xattr"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
