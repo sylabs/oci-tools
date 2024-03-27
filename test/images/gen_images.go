@@ -98,10 +98,11 @@ func generateIndexes(path string) error {
 }
 
 type tarEntry struct {
-	Typeflag byte
-	Name     string
-	Linkname string
-	Content  string
+	Typeflag   byte
+	Name       string
+	Linkname   string
+	Content    string
+	PAXRecords map[string]string
 }
 
 func (e tarEntry) Header() *tar.Header {
@@ -115,6 +116,10 @@ func (e tarEntry) Header() *tar.Header {
 	}
 	if e.Typeflag == tar.TypeDir {
 		h.Mode = 0o755
+	}
+	if len(e.PAXRecords) > 0 {
+		h.PAXRecords = e.PAXRecords
+		h.Format = tar.FormatPAX
 	}
 
 	return h
@@ -138,6 +143,7 @@ func writeLayerTAR(w io.Writer, tes []tarEntry) error {
 	return tw.Close()
 }
 
+//nolint:maintidx
 func generateTARImages(path string) error {
 	images := []struct {
 		layers      [][]tarEntry
@@ -350,6 +356,30 @@ func generateTARImages(path string) error {
 				},
 			},
 			destination: filepath.Join(path, "hard-link-delete-4"),
+		},
+		// Image with a hard link to a deleted regular file with extended attributes. Implied
+		// contents:
+		//
+		//	a/
+		//	a/b/
+		//  a/b/bar (with extended attributes)
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/foo", Content: "foo", PAXRecords: map[string]string{
+						"SCHILY.xattr.user.foo": "bar",
+					}},
+					{Typeflag: tar.TypeLink, Name: "a/b/bar", Linkname: "a/b/foo"},
+				},
+				{
+					{Typeflag: tar.TypeDir, Name: "a/"},
+					{Typeflag: tar.TypeDir, Name: "a/b/"},
+					{Typeflag: tar.TypeReg, Name: "a/b/.wh.foo"},
+				},
+			},
+			destination: filepath.Join(path, "hard-link-delete-xattr"),
 		},
 	}
 
