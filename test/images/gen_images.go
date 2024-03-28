@@ -149,6 +149,15 @@ func generateTARImages(path string) error {
 		layers      [][]tarEntry
 		destination string
 	}{
+		// Image with explicit root directory "./".
+		{
+			layers: [][]tarEntry{
+				{
+					{Typeflag: tar.TypeDir, Name: "./"},
+				},
+			},
+			destination: filepath.Join(path, "root-dir-entry"),
+		},
 		// Image with explicit whiteout of file "a/b/foo". Implied contents:
 		//
 		//	a/

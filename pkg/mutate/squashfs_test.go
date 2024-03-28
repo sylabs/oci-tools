@@ -48,6 +48,16 @@ func diffSquashFS(tb testing.TB, pathA, pathB string, diffArgs ...string) {
 }
 
 func Test_SquashfsLayer(t *testing.T) {
+	squashImage, err := Squash(corpus.Image(t, "root-dir-entry"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	squashLayers, err := squashImage.Layers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []struct {
 		name              string
 		layer             v1.Layer
@@ -55,6 +65,16 @@ func Test_SquashfsLayer(t *testing.T) {
 		noConvertWhiteout bool
 		diffArgs          []string
 	}{
+		// Simple image that contains a root directory entry "./", which caused a bug when the
+		// image was first "squashed" and then converted to SquashFS.
+		{
+			name:      "RootDirEntry",
+			layer:     squashLayers[0],
+			converter: "sqfstar",
+			// Some versions of squashfs-tools do not implement '-root-uid'/'-root-gid', so ignore
+			// differences in ownership.
+			diffArgs: []string{"--no-owner"},
+		},
 		// HelloWorld layer contains no whiteouts - conversion should have no effect on output.
 		{
 			name: "HelloWorldBlob_sqfstar",

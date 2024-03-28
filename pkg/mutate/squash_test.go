@@ -18,6 +18,10 @@ func TestSquash(t *testing.T) {
 		base v1.Image
 	}{
 		{
+			name: "RootDirEntry",
+			base: corpus.Image(t, "root-dir-entry"),
+		},
+		{
 			name: "DockerManifest",
 			base: corpus.Image(t, "hello-world-docker-v2-manifest"),
 		},
