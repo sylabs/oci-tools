@@ -48,8 +48,6 @@ type imageState struct {
 
 // writeChangesetEntry writes a changeset entry, which add/modify/remove image content.
 func (s *imageState) writeChangesetEntry(hdr *tar.Header, r io.Reader) error {
-	hdr.Name = filepath.Clean(hdr.Name)
-
 	// If entry is a whiteout, record it.
 	if base := filepath.Base(hdr.Name); strings.HasPrefix(base, aufsWhiteoutPrefix) {
 		opaque := base == aufsOpaqueMarker
@@ -71,11 +69,19 @@ func (s *imageState) writeChangesetEntry(hdr *tar.Header, r io.Reader) error {
 		return nil
 	}
 
-	shadowed := s.isShadowed(hdr.Name)
+	name := filepath.Clean(hdr.Name)
+
+	hdr.Name = name
+	if hdr.Typeflag == tar.TypeDir {
+		// The directory name in the name field should end with a slash.
+		hdr.Name = name + string(filepath.Separator)
+	}
+
+	shadowed := s.isShadowed(name)
 
 	// If entry is a hard link, set it aside; we can't write it until its target is committed.
 	if hdr.Typeflag == tar.TypeLink {
-		s.imageShadows[hdr.Name] = shadow{
+		s.imageShadows[name] = shadow{
 			exact:    true,
 			children: true,
 		}
@@ -100,7 +106,7 @@ func (s *imageState) writeChangesetEntry(hdr *tar.Header, r io.Reader) error {
 			}
 		}
 
-		s.imageShadows[hdr.Name] = shadow{
+		s.imageShadows[name] = shadow{
 			exact:    true,
 			children: hdr.Typeflag != tar.TypeDir,
 		}
