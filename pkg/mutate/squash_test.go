@@ -5,6 +5,7 @@
 package mutate
 
 import (
+	"bytes"
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -20,11 +21,56 @@ func TestSquash(t *testing.T) {
 			name: "DockerManifest",
 			base: corpus.Image(t, "hello-world-docker-v2-manifest"),
 		},
+		{
+			name: "WhiteoutExplicitFile",
+			base: corpus.Image(t, "whiteout-explicit-file"),
+		},
+		{
+			name: "WhiteoutExplicitDir",
+			base: corpus.Image(t, "whiteout-explicit-dir"),
+		},
+		{
+			name: "WhiteoutOpaque",
+			base: corpus.Image(t, "whiteout-opaque"),
+		},
+		{
+			name: "WhiteoutOpaqueEnd",
+			base: corpus.Image(t, "whiteout-opaque-end"),
+		},
+		{
+			name: "HardLink1",
+			base: corpus.Image(t, "hard-link-1"),
+		},
+		{
+			name: "HardLink2",
+			base: corpus.Image(t, "hard-link-2"),
+		},
+		{
+			name: "HardLinkDelete1",
+			base: corpus.Image(t, "hard-link-delete-1"),
+		},
+		{
+			name: "HardLinkDelete2",
+			base: corpus.Image(t, "hard-link-delete-2"),
+		},
+		{
+			name: "HardLinkDelete3",
+			base: corpus.Image(t, "hard-link-delete-3"),
+		},
+		{
+			name: "HardLinkDelete4",
+			base: corpus.Image(t, "hard-link-delete-4"),
+		},
+		{
+			name: "HardLinkDeleteXattr",
+			base: corpus.Image(t, "hard-link-delete-xattr"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			img, err := Squash(tt.base)
-			if err != nil {
+			var b bytes.Buffer
+
+			if err := squash(tt.base, &b); err != nil {
 				t.Fatal(err)
 			}
 
@@ -33,19 +79,7 @@ func TestSquash(t *testing.T) {
 				goldie.WithSubTestNameForDir(true),
 			)
 
-			config, err := img.RawConfigFile()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			g.Assert(t, "config", config)
-
-			manifest, err := img.RawManifest()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			g.Assert(t, "manifest", manifest)
+			g.Assert(t, "layer", b.Bytes())
 		})
 	}
 }
