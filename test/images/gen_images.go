@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -425,6 +426,45 @@ func generateTARImages(path string) error {
 	return nil
 }
 
+func generateManyLayerImage(path string) error {
+	var ls []v1.Layer
+
+	// Generate 50 unique layers.
+	for i := 0; i < 50; i++ {
+		layer := []tarEntry{
+			{Typeflag: tar.TypeReg, Name: strconv.Itoa(i)},
+		}
+
+		opener := func() (io.ReadCloser, error) {
+			pr, pw := io.Pipe()
+			go func() {
+				pw.CloseWithError(writeLayerTAR(pw, layer))
+			}()
+			return pr, nil
+		}
+
+		l, err := tarball.LayerFromOpener(opener)
+		if err != nil {
+			return err
+		}
+
+		ls = append(ls, l)
+	}
+
+	img, err := mutate.AppendLayers(empty.Image, ls...)
+	if err != nil {
+		return err
+	}
+
+	ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+
+	if _, err := layout.Write(filepath.Join(path, "many-layers"), ii); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	path := "."
 	if len(os.Args) > 1 {
@@ -442,6 +482,11 @@ func main() {
 	}
 
 	if err := generateTARImages(path); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	if err := generateManyLayerImage(path); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
