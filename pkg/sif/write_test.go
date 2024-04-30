@@ -31,6 +31,10 @@ func TestWrite(t *testing.T) {
 			name: "DockerManifestList",
 			ii:   corpus.ImageIndex(t, "hello-world-docker-v2-manifest-list"),
 		},
+		{
+			name: "ManyLayers",
+			ii:   corpus.ImageIndex(t, "many-layers"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
