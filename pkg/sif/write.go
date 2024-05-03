@@ -201,8 +201,38 @@ func numDescriptorsForIndex(ii v1.ImageIndex) (int64, error) {
 	return count + 1, nil
 }
 
+// writeOpts accumulates write options.
+type writeOpts struct {
+	spareDescriptors int64
+}
+
+// WriteOpt are used to specify write options.
+type WriteOpt func(*writeOpts) error
+
+// OptWriteWithSpareDescriptorCapacity specifies that the SIF should be created with n spare
+// descriptors.
+func OptWriteWithSpareDescriptorCapacity(n int64) WriteOpt {
+	return func(wo *writeOpts) error {
+		wo.spareDescriptors = n
+		return nil
+	}
+}
+
 // Write constructs a SIF at path from an ImageIndex.
-func Write(path string, ii v1.ImageIndex) error {
+//
+// By default, the SIF is created with the exact number of descriptors required to represent ii. To
+// include spare descriptor capacity, consider using OptWriteWithSpareDescriptorCapacity.
+func Write(path string, ii v1.ImageIndex, opts ...WriteOpt) error {
+	wo := writeOpts{
+		spareDescriptors: 0,
+	}
+
+	for _, opt := range opts {
+		if err := opt(&wo); err != nil {
+			return err
+		}
+	}
+
 	n, err := numDescriptorsForIndex(ii)
 	if err != nil {
 		return err
@@ -210,7 +240,7 @@ func Write(path string, ii v1.ImageIndex) error {
 
 	fi, err := sif.CreateContainerAtPath(path,
 		sif.OptCreateDeterministic(),
-		sif.OptCreateWithDescriptorCapacity(n),
+		sif.OptCreateWithDescriptorCapacity(n+wo.spareDescriptors),
 	)
 	if err != nil {
 		return err
