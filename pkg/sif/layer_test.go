@@ -87,7 +87,7 @@ func TestLayer_Offset(t *testing.T) {
 				"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338",
 				"sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01",
 			),
-			wantOffset: 32176,
+			wantOffset: 6436,
 		},
 	}
 	for _, tt := range tests {

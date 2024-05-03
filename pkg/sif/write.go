@@ -145,9 +145,73 @@ func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) erro
 	return f.writeBlobToFileImage(bytes.NewReader(m), rootIndex)
 }
 
+// numDescriptorsForImage returns the number of descriptors required to store img.
+func numDescriptorsForImage(img v1.Image) (int64, error) {
+	ls, err := img.Layers()
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(len(ls) + 2), nil
+}
+
+// numDescriptorsForIndex returns the number of descriptors required to store ii.
+func numDescriptorsForIndex(ii v1.ImageIndex) (int64, error) {
+	index, err := ii.IndexManifest()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int64
+
+	for _, desc := range index.Manifests {
+		//nolint:exhaustive // Exhaustive cases not appropriate.
+		switch desc.MediaType {
+		case types.DockerManifestList, types.OCIImageIndex:
+			ii, err := ii.ImageIndex(desc.Digest)
+			if err != nil {
+				return 0, err
+			}
+
+			n, err := numDescriptorsForIndex(ii)
+			if err != nil {
+				return 0, err
+			}
+
+			count += n
+
+		case types.DockerManifestSchema2, types.OCIManifestSchema1:
+			img, err := ii.Image(desc.Digest)
+			if err != nil {
+				return 0, err
+			}
+
+			n, err := numDescriptorsForImage(img)
+			if err != nil {
+				return 0, err
+			}
+
+			count += n
+
+		default:
+			count++
+		}
+	}
+
+	return count + 1, nil
+}
+
 // Write constructs a SIF at path from an ImageIndex.
 func Write(path string, ii v1.ImageIndex) error {
-	fi, err := sif.CreateContainerAtPath(path, sif.OptCreateDeterministic())
+	n, err := numDescriptorsForIndex(ii)
+	if err != nil {
+		return err
+	}
+
+	fi, err := sif.CreateContainerAtPath(path,
+		sif.OptCreateDeterministic(),
+		sif.OptCreateWithDescriptorCapacity(n),
+	)
 	if err != nil {
 		return err
 	}
