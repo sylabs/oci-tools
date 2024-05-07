@@ -22,6 +22,7 @@ func TestWrite(t *testing.T) {
 	tests := []struct {
 		name string
 		ii   v1.ImageIndex
+		opts []sif.WriteOpt
 	}{
 		{
 			name: "DockerManifest",
@@ -35,12 +36,19 @@ func TestWrite(t *testing.T) {
 			name: "ManyLayers",
 			ii:   corpus.ImageIndex(t, "many-layers"),
 		},
+		{
+			name: "SpareDescriptor",
+			ii:   corpus.ImageIndex(t, "hello-world-docker-v2-manifest"),
+			opts: []sif.WriteOpt{
+				sif.OptWriteWithSpareDescriptorCapacity(1),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "image.sif")
 
-			if err := sif.Write(path, tt.ii); err != nil {
+			if err := sif.Write(path, tt.ii, tt.opts...); err != nil {
 				t.Fatal(err)
 			}
 
