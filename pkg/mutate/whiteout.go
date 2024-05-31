@@ -16,6 +16,7 @@ import (
 const (
 	aufsWhiteoutPrefix = ".wh."
 	aufsOpaqueMarker   = ".wh..wh..opq"
+	schilyOpaqueXattr  = "SCHILY.xattr.trusted.overlay.opaque"
 )
 
 var errUnexpectedOpaque = errors.New("unexpected opaque marker")
@@ -52,11 +53,11 @@ func scanAUFSWhiteouts(in io.Reader) (map[string]bool, bool, error) {
 	}
 }
 
-// whiteOutFilter streams a tar file from in to out, replacing AUFS whiteout
-// markers with OverlayFS whiteout markers. Due to unrestricted ordering of
-// markers vs their target, the list of opaquePaths must be obtained prior to
-// filtering and provided to this filter.
-func whiteoutFilter(in io.Reader, out io.Writer, opaquePaths map[string]bool) error {
+// whiteoutsToOverlayFS streams a tar file from in to out, replacing AUFS
+// whiteout markers with OverlayFS whiteout markers. Due to unrestricted
+// ordering of markers vs their target, the list of opaquePaths must be obtained
+// prior to filtering and provided to this filter.
+func whiteoutsToOverlayFS(in io.Reader, out io.Writer, opaquePaths map[string]bool) error {
 	tr := tar.NewReader(in)
 	tw := tar.NewWriter(out)
 	defer tw.Close()
@@ -91,7 +92,7 @@ func whiteoutFilter(in io.Reader, out io.Writer, opaquePaths map[string]bool) er
 			if header.PAXRecords == nil {
 				header.PAXRecords = map[string]string{}
 			}
-			header.PAXRecords["SCHILY.xattr."+"trusted.overlay.opaque"] = "y"
+			header.PAXRecords[schilyOpaqueXattr] = "y"
 		}
 		// Replace a `.wh.<name>` marker with a char dev 0 at <name>
 		if strings.HasPrefix(base, aufsWhiteoutPrefix) {
@@ -110,6 +111,72 @@ func whiteoutFilter(in io.Reader, out io.Writer, opaquePaths map[string]bool) er
 			return err
 		}
 
+		// Disable gosec G110: Potential DoS vulnerability via decompression bomb.
+		// We are just filtering a flow directly from tar reader to tar writer - we aren't reading
+		// into memory beyond the stdlib buffering.
+		//nolint:gosec
+		if _, err := io.Copy(tw, tr); err != nil {
+			return err
+		}
+	}
+}
+
+// whiteoutsToAUFS streams a tar file from in to out, replacing OverlayFS
+// whiteout markers with AUFS whiteout markers.
+func whiteoutsToAUFS(in io.Reader, out io.Writer) error {
+	tr := tar.NewReader(in)
+	tw := tar.NewWriter(out)
+	defer tw.Close()
+
+	for {
+		header, err := tr.Next()
+
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		// <dir> with opaque xattr -> write both <dir> & <dir>/.wh..wh..opq
+		if header.Typeflag == tar.TypeDir && header.PAXRecords[schilyOpaqueXattr] == "y" {
+			// Write directory entry, without the xattr.
+			delete(header.PAXRecords, schilyOpaqueXattr)
+			if err := tw.WriteHeader(header); err != nil {
+				return err
+			}
+			// Write opaque marker file inside the directory.
+			// Disable gosec 305: File traversal when extracting zip/tar archive.
+			// We are modifying an existing tar stream. No extraction here.
+			//nolint:gosec
+			if err := tw.WriteHeader(&tar.Header{
+				Typeflag:   tar.TypeReg,
+				Name:       filepath.Join(header.Name, aufsOpaqueMarker),
+				Size:       0,
+				Mode:       0o600,
+				Uid:        header.Uid,
+				Gid:        header.Gid,
+				Uname:      header.Uname,
+				Gname:      header.Gname,
+				AccessTime: header.AccessTime,
+				ChangeTime: header.ChangeTime,
+			}); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// <file> as 0:0 char dev -> becomes .wh..wh.<file>
+		if header.Typeflag == tar.TypeChar && header.Devmajor == 0 && header.Devminor == 0 {
+			header.Typeflag = tar.TypeReg
+			header.Name = filepath.Join(filepath.Dir(header.Name), aufsWhiteoutPrefix+filepath.Base(header.Name))
+			header.Size = 0
+			header.Mode = 0o600
+		}
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
 		// Disable gosec G110: Potential DoS vulnerability via decompression bomb.
 		// We are just filtering a flow directly from tar reader to tar writer - we aren't reading
 		// into memory beyond the stdlib buffering.

@@ -178,7 +178,7 @@ func (c *squashfsConverter) Uncompressed(l v1.Layer) (io.ReadCloser, error) {
 	pr, pw := io.Pipe()
 	go func() {
 		defer rc.Close()
-		pw.CloseWithError(whiteoutFilter(rc, pw, opaquePaths))
+		pw.CloseWithError(whiteoutsToOverlayFS(rc, pw, opaquePaths))
 	}()
 	return pr, nil
 }
