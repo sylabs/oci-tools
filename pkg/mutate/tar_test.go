@@ -14,7 +14,7 @@ import (
 	"github.com/sebdah/goldie/v2"
 )
 
-func Test_TARLayer(t *testing.T) {
+func Test_TarFromSquashfsLayer(t *testing.T) {
 	tests := []struct {
 		name              string
 		layer             v1.Layer
@@ -62,14 +62,14 @@ func Test_TARLayer(t *testing.T) {
 				t.Skip(err)
 			}
 
-			l, err := TarLayer(tt.layer, t.TempDir(),
+			opener, err := TarFromSquashfsLayer(tt.layer, t.TempDir(),
 				OptTarSkipWhiteoutConversion(tt.noConvertWhiteout),
 			)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			rc, err := l.Uncompressed()
+			rc, err := opener()
 			if err != nil {
 				t.Fatal(err)
 			}

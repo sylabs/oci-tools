@@ -6,6 +6,7 @@ package main
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	ocimutate "github.com/sylabs/oci-tools/pkg/mutate"
 )
 
 // Use a fixed digest, so that this is repeatable.
@@ -465,6 +467,85 @@ func generateManyLayerImage(path string) error {
 	return nil
 }
 
+var errMultipleImages = errors.New("multiple images found in index")
+
+func generateSquashFSImages(path string) error {
+	images := []struct {
+		source       string
+		destination  string
+		squashLayers bool
+	}{
+		{
+			source:       filepath.Join(path, "aufs-docker-v2-manifest"),
+			destination:  filepath.Join(path, "overlayfs-docker-v2-manifest"),
+			squashLayers: false, // need to preserve whiteout test files
+		},
+	}
+
+	for _, im := range images {
+		ii, err := layout.ImageIndexFromPath(im.source)
+		if err != nil {
+			return err
+		}
+
+		ix, err := ii.IndexManifest()
+		if err != nil {
+			return err
+		}
+		if len(ix.Manifests) != 1 {
+			return errMultipleImages
+		}
+
+		ih := ix.Manifests[0].Digest
+		img, err := ii.Image(ih)
+		if err != nil {
+			return err
+		}
+
+		if im.squashLayers {
+			img, err = ocimutate.Squash(img)
+			if err != nil {
+				return err
+			}
+		}
+
+		ms := []ocimutate.Mutation{}
+		ls, err := img.Layers()
+		if err != nil {
+			return err
+		}
+
+		for i, l := range ls {
+			squashfsLayer, err := ocimutate.SquashfsLayer(l, os.TempDir())
+			if err != nil {
+				return err
+			}
+			ms = append(ms, ocimutate.SetLayer(i, squashfsLayer))
+		}
+
+		img, err = ocimutate.Apply(img, ms...)
+		if err != nil {
+			return err
+		}
+
+		desc, err := partial.Descriptor(img)
+		if err != nil {
+			return err
+		}
+
+		ii = mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add:        img,
+			Descriptor: *desc,
+		})
+
+		if _, err := layout.Write(im.destination, ii); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	path := "."
 	if len(os.Args) > 1 {
@@ -487,6 +568,11 @@ func main() {
 	}
 
 	if err := generateManyLayerImage(path); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	if err := generateSquashFSImages(path); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}

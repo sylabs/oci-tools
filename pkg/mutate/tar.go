@@ -14,7 +14,6 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type tarConverter struct {
@@ -50,9 +49,10 @@ func OptTarSkipWhiteoutConversion(b bool) TarConverterOpt {
 	}
 }
 
-// TarLayer converts the base layer into a layer using the tar format. A dir
-// must be specified, which is used as a working directory during conversion.
-// The caller is responsible for cleaning up dir.
+// TarFromSquashfsLayer returns an opener that will provide a TAR conversion of
+// the SquashFS format base layer. A dir must be specified, which is used as a
+// working directory during conversion. The caller is responsible for cleaning
+// up dir.
 //
 // By default, this will attempt to locate a suitable SquashFS to tar converter,
 // currently only 'sqfs2tar', via exec.LookPath. To specify a path to a specific
@@ -62,10 +62,15 @@ func OptTarSkipWhiteoutConversion(b bool) TarConverterOpt {
 // converted to AUFS whiteout markers in the TAR layer. This can be disabled,
 // e.g. where it is known that the layer is part of a squashed image that will
 // not have any whiteouts, using OptTarSkipWhiteourConversion.
-//
-// Note - when whiteout conversion is performed the base layer will be read
-// twice. Callers should ensure it is cached, and is not a streaming layer.
-func TarLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (v1.Layer, error) {
+func TarFromSquashfsLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (tarball.Opener, error) {
+	mt, err := base.MediaType()
+	if err != nil {
+		return nil, err
+	}
+	if mt != squashfsLayerMediaType {
+		return nil, fmt.Errorf("%w: %v", errUnsupportedLayerType, mt)
+	}
+
 	c := tarConverter{
 		dir:             dir,
 		convertWhiteout: true,
@@ -85,7 +90,7 @@ func TarLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (v1.Layer, err
 		c.converter = path
 	}
 
-	return c.layer(base)
+	return c.opener(base), nil
 }
 
 // makeSquashfs returns a the path to a TAR file that contains the contents of
@@ -158,25 +163,5 @@ func (c *tarConverter) opener(l v1.Layer) tarball.Opener {
 			pw.CloseWithError(whiteoutsToAUFS(tr, pw))
 		}()
 		return pr, nil
-	}
-}
-
-// layer converts base to TAR format.
-func (c *tarConverter) layer(base v1.Layer) (v1.Layer, error) {
-	mt, err := base.MediaType()
-	if err != nil {
-		return nil, err
-	}
-
-	//nolint:exhaustive // Exhaustive cases not appropriate.
-	switch mt {
-	case squashfsLayerMediaType:
-		return tarball.LayerFromOpener(c.opener(base))
-
-	case types.DockerLayer, types.DockerUncompressedLayer, types.OCILayer, types.OCIUncompressedLayer:
-		return base, nil
-
-	default:
-		return nil, fmt.Errorf("%w: %v", errUnsupportedLayerType, mt)
 	}
 }
