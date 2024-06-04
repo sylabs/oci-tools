@@ -42,7 +42,7 @@ func Test_scanAUFSOpaque(t *testing.T) {
 				Hex:       "da55812559dec81445c289c3832cee4a2f725b15aeb258791640185c3126b2bf",
 			}),
 			expectOpaque: map[string]bool{
-				"dir": true,
+				"./dir/": true,
 			},
 			expectFileWhiteout: true,
 		},

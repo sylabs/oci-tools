@@ -24,7 +24,6 @@ var errUnexpectedOpaque = errors.New("unexpected opaque marker")
 // scanAUFSWhiteouts reads a TAR stream, returning a map of <path>:true for
 // directories in the tar that contain an AUFS .wh..wh..opq opaque directory
 // marker file, and a boolean indicating the presence of any .wh.<file> markers.
-// Note that paths returned are clean, per filepath.Clean.
 func scanAUFSWhiteouts(in io.Reader) (map[string]bool, bool, error) {
 	opaquePaths := map[string]bool{}
 	fileWhiteout := false
@@ -40,10 +39,9 @@ func scanAUFSWhiteouts(in io.Reader) (map[string]bool, bool, error) {
 			return nil, false, err
 		}
 
-		base := filepath.Base(header.Name)
+		parent, base := filepath.Split(header.Name)
 
 		if base == aufsOpaqueMarker {
-			parent := filepath.Dir(header.Name)
 			opaquePaths[parent] = true
 		}
 
@@ -75,10 +73,7 @@ func whiteoutsToOverlayFS(in io.Reader, out io.Writer, opaquePaths map[string]bo
 		// Must force to PAX format, to accommodate xattrs
 		header.Format = tar.FormatPAX
 
-		clean := filepath.Clean(header.Name)
-		base := filepath.Base(header.Name)
-		parent := filepath.Dir(header.Name)
-
+		parent, base := filepath.Split(header.Name)
 		// Don't include .wh..wh..opq opaque directory markers in output.
 		if base == aufsOpaqueMarker {
 			// If we don't know the target should be opaque, then provided opaquePaths is incorrect.
@@ -88,7 +83,7 @@ func whiteoutsToOverlayFS(in io.Reader, out io.Writer, opaquePaths map[string]bo
 			continue
 		}
 		// Set overlayfs xattr on a dir that was previously found to contain a .wh..wh..opq marker.
-		if opq := opaquePaths[clean]; opq {
+		if opq := opaquePaths[header.Name]; opq {
 			if header.PAXRecords == nil {
 				header.PAXRecords = map[string]string{}
 			}
@@ -96,7 +91,7 @@ func whiteoutsToOverlayFS(in io.Reader, out io.Writer, opaquePaths map[string]bo
 		}
 		// Replace a `.wh.<name>` marker with a char dev 0 at <name>
 		if strings.HasPrefix(base, aufsWhiteoutPrefix) {
-			target := filepath.Join(parent, strings.TrimPrefix(base, aufsWhiteoutPrefix))
+			target := parent + strings.TrimPrefix(base, aufsWhiteoutPrefix)
 			header.Name = target
 			header.Typeflag = tar.TypeChar
 			header.Devmajor = 0
@@ -146,12 +141,11 @@ func whiteoutsToAUFS(in io.Reader, out io.Writer) error {
 				return err
 			}
 			// Write opaque marker file inside the directory.
-			// Disable gosec 305: File traversal when extracting zip/tar archive.
-			// We are modifying an existing tar stream. No extraction here.
-			//nolint:gosec
+			trimmedName := strings.TrimSuffix(header.Name, string(filepath.Separator))
+			opqName := trimmedName + string(filepath.Separator) + aufsOpaqueMarker
 			if err := tw.WriteHeader(&tar.Header{
 				Typeflag:   tar.TypeReg,
-				Name:       filepath.Join(header.Name, aufsOpaqueMarker),
+				Name:       opqName,
 				Size:       0,
 				Mode:       0o600,
 				Uid:        header.Uid,
@@ -168,8 +162,9 @@ func whiteoutsToAUFS(in io.Reader, out io.Writer) error {
 
 		// <file> as 0:0 char dev -> becomes .wh..wh.<file>
 		if header.Typeflag == tar.TypeChar && header.Devmajor == 0 && header.Devminor == 0 {
+			parent, base := filepath.Split(header.Name)
 			header.Typeflag = tar.TypeReg
-			header.Name = filepath.Join(filepath.Dir(header.Name), aufsWhiteoutPrefix+filepath.Base(header.Name))
+			header.Name = parent + aufsWhiteoutPrefix + base
 			header.Size = 0
 			header.Mode = 0o600
 		}
