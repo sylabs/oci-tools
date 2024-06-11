@@ -17,7 +17,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-const layerMediaType types.MediaType = "application/vnd.sylabs.image.layer.v1.squashfs"
+const squashfsLayerMediaType types.MediaType = "application/vnd.sylabs.image.layer.v1.squashfs"
 
 type squashfsConverter struct {
 	converter       string   // Path to converter program.
@@ -206,7 +206,7 @@ func (c *squashfsConverter) layer(base v1.Layer) (v1.Layer, error) {
 
 	//nolint:exhaustive // Exhaustive cases not appropriate.
 	switch mt {
-	case layerMediaType:
+	case squashfsLayerMediaType:
 		return base, nil
 
 	case types.DockerLayer, types.DockerUncompressedLayer, types.OCILayer, types.OCIUncompressedLayer:
@@ -298,5 +298,5 @@ func (l *squashfsLayer) Size() (int64, error) {
 
 // MediaType returns the media type of the Layer.
 func (l *squashfsLayer) MediaType() (types.MediaType, error) {
-	return layerMediaType, nil
+	return squashfsLayerMediaType, nil
 }
