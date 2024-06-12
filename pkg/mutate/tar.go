@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -49,10 +48,21 @@ func OptTarSkipWhiteoutConversion(b bool) TarConverterOpt {
 	}
 }
 
+// OptTarTempDir sets the directory to use for temporary files. If not set, the
+// directory returned by TempDir is used.
+func OptTarTempDir(d string) TarConverterOpt {
+	return func(c *tarConverter) error {
+		c.dir = d
+		return nil
+	}
+}
+
 // TarFromSquashfsLayer returns an opener that will provide a TAR conversion of
-// the SquashFS format base layer. A dir must be specified, which is used as a
-// working directory during conversion. The caller is responsible for cleaning
-// up dir.
+// the SquashFS format base layer.
+//
+// TarFromSquashfsLayer may create one or more temporary files during the
+// conversion process. By default, the directory returned by TempDir is used. To
+// override this, consider using OptTarTempDir.
 //
 // By default, this will attempt to locate a suitable SquashFS to tar converter,
 // currently only 'sqfs2tar', via exec.LookPath. To specify a path to a specific
@@ -62,7 +72,7 @@ func OptTarSkipWhiteoutConversion(b bool) TarConverterOpt {
 // converted to AUFS whiteout markers in the TAR layer. This can be disabled,
 // e.g. where it is known that the layer is part of a squashed image that will
 // not have any whiteouts, using OptTarSkipWhiteourConversion.
-func TarFromSquashfsLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (tarball.Opener, error) {
+func TarFromSquashfsLayer(base v1.Layer, opts ...TarConverterOpt) (tarball.Opener, error) {
 	mt, err := base.MediaType()
 	if err != nil {
 		return nil, err
@@ -72,7 +82,6 @@ func TarFromSquashfsLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (t
 	}
 
 	c := tarConverter{
-		dir:             dir,
 		convertWhiteout: true,
 	}
 
@@ -93,44 +102,43 @@ func TarFromSquashfsLayer(base v1.Layer, dir string, opts ...TarConverterOpt) (t
 	return c.opener(base), nil
 }
 
-// makeSquashfs returns a the path to a TAR file that contains the contents of
-// the SquashFS stream from r.
-func (c *tarConverter) makeTAR(r io.Reader) (string, error) {
-	dir, err := os.MkdirTemp(c.dir, "")
+// makeTar returns an io.ReadCloser that provides a TAR conversion of the
+// contents of the SquashFS stream from r.
+func (c *tarConverter) makeTAR(r io.Reader) (io.ReadCloser, error) {
+	sqfsFile, err := os.CreateTemp(c.dir, "*.sqfs")
 	if err != nil {
-		return "", err
-	}
-
-	sqfsPath := filepath.Join(dir, "layer.sqfs")
-	sqfsFile, err := os.Create(sqfsPath)
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer sqfsFile.Close()
 
 	_, err = io.Copy(sqfsFile, r)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	if err := sqfsFile.Close(); err != nil {
+		return nil, err
 	}
 
-	tarPath := filepath.Join(dir, "layer.tar")
-	tarFile, err := os.Create(tarPath)
-	if err != nil {
-		return "", err
-	}
-	defer tarFile.Close()
-
+	pr, pw := io.Pipe()
 	//nolint:gosec // Arguments are created programatically.
-	cmd := exec.Command(c.converter, sqfsPath)
-	cmd.Stdout = tarFile
+	cmd := exec.Command(c.converter, sqfsFile.Name())
+	cmd.Stdout = pw
 	errBuff := bytes.Buffer{}
 	cmd.Stderr = &errBuff
 
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%s error: %w %v", c.converter, err, errBuff)
+	convert := func() error {
+		defer os.Remove(sqfsFile.Name())
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("%s error: %w %s", c.converter, err, errBuff.String())
+		}
+		return nil
 	}
 
-	return tarPath, nil
+	go func() {
+		pw.CloseWithError(convert())
+	}()
+
+	return pr, nil
 }
 
 // Opener returns a tarball.Opener that will open a TAR file holding the content
@@ -143,12 +151,7 @@ func (c *tarConverter) opener(l v1.Layer) tarball.Opener {
 		}
 		defer rc.Close()
 
-		tarFile, err := c.makeTAR(rc)
-		if err != nil {
-			return nil, err
-		}
-
-		tr, err := os.Open(tarFile)
+		tr, err := c.makeTAR(rc)
 		if err != nil {
 			return nil, err
 		}

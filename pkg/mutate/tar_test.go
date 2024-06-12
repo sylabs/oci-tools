@@ -16,10 +16,10 @@ import (
 
 func Test_TarFromSquashfsLayer(t *testing.T) {
 	tests := []struct {
-		name              string
-		layer             v1.Layer
-		noConvertWhiteout bool
-		diffArgs          []string
+		name     string
+		layer    v1.Layer
+		opts     []TarConverterOpt
+		diffArgs []string
 	}{
 		// SquashFS layer contains whiteouts in OverlayFS format. Should be
 		// converted to AUFS form when noConvertWhiteout = false.
@@ -45,7 +45,6 @@ func Test_TarFromSquashfsLayer(t *testing.T) {
 				Algorithm: "sha256",
 				Hex:       "2addb7e8ed33f5f080813d437f455a2ae0c6a3cd41f978eaa05fc776d4f7a887",
 			}),
-			noConvertWhiteout: false,
 		},
 		{
 			name: "OverlayFSBlob_SkipWhiteoutConversion",
@@ -53,7 +52,15 @@ func Test_TarFromSquashfsLayer(t *testing.T) {
 				Algorithm: "sha256",
 				Hex:       "2addb7e8ed33f5f080813d437f455a2ae0c6a3cd41f978eaa05fc776d4f7a887",
 			}),
-			noConvertWhiteout: true,
+			opts: []TarConverterOpt{OptTarSkipWhiteoutConversion(true)},
+		},
+		{
+			name: "OverlayFSBlobTempDir",
+			layer: testLayer(t, "overlayfs-docker-v2-manifest", v1.Hash{
+				Algorithm: "sha256",
+				Hex:       "2addb7e8ed33f5f080813d437f455a2ae0c6a3cd41f978eaa05fc776d4f7a887",
+			}),
+			opts: []TarConverterOpt{OptTarTempDir(t.TempDir())},
 		},
 	}
 	for _, tt := range tests {
@@ -62,9 +69,7 @@ func Test_TarFromSquashfsLayer(t *testing.T) {
 				t.Skip(err)
 			}
 
-			opener, err := TarFromSquashfsLayer(tt.layer, t.TempDir(),
-				OptTarSkipWhiteoutConversion(tt.noConvertWhiteout),
-			)
+			opener, err := TarFromSquashfsLayer(tt.layer, tt.opts...)
 			if err != nil {
 				t.Fatal(err)
 			}
