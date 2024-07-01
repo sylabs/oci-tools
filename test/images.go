@@ -63,12 +63,12 @@ func (c *Corpus) OCILayout(tb testing.TB, name string) string {
 // SIF returns a temporary SIF for the test to use, populated from the OCI Image Layout with the
 // specified name in the corpus. The SIF is automatically removed when the test and all its
 // subtests complete.
-func (c *Corpus) SIF(tb testing.TB, name string) string {
+func (c *Corpus) SIF(tb testing.TB, name string, opt ...sif.WriteOpt) string {
 	tb.Helper()
 
 	path := filepath.Join(tb.TempDir(), "image.sif")
 
-	if err := sif.Write(path, c.ImageIndex(tb, name)); err != nil {
+	if err := sif.Write(path, c.ImageIndex(tb, name), opt...); err != nil {
 		tb.Fatalf("failed to write SIF: %v", err)
 	}
 
