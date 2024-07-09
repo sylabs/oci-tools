@@ -3,7 +3,7 @@ module github.com/sylabs/oci-tools
 go 1.21.0
 
 require (
-	github.com/google/go-containerregistry v0.19.2
+	github.com/google/go-containerregistry v0.20.0
 	github.com/sebdah/goldie/v2 v2.5.3
 	github.com/sylabs/sif/v2 v2.17.1
 )
