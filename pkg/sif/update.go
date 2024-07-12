@@ -94,11 +94,10 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// Delete existing blobs from the SIF except those we want to keep.
-	if err := deleteBlobsExcept(fi, keepBlobs); err != nil {
-		return err
-	}
-	// Delete old RootIndex.
-	if err := deleteRootIndex(fi); err != nil {
+	if err := fi.DeleteObjects(selectBlobsExcept(keepBlobs),
+		sif.OptDeleteZero(true),
+		sif.OptDeleteCompact(true),
+	); err != nil {
 		return err
 	}
 
@@ -309,33 +308,13 @@ func readCacheBlob(digest v1.Hash, cacheDir string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-// deleteBlobsExcept removes all OCI.Blob descriptors from fi, except those with
+// selectBlobsExcept selects all OCI.RootIndex/OCI.Blob descriptors, except those with
 // digests listed in keep.
-func deleteBlobsExcept(fi *sif.FileImage, keep []v1.Hash) error {
-	descs, err := fi.GetDescriptors(sif.WithDataType(sif.DataOCIBlob))
-	if err != nil {
-		return err
-	}
-	for _, d := range descs {
-		dd, err := d.OCIBlobDigest()
-		if err != nil {
-			return err
+func selectBlobsExcept(keep []v1.Hash) sif.DescriptorSelectorFunc {
+	return func(d sif.Descriptor) (bool, error) {
+		if h, err := d.OCIBlobDigest(); err == nil && !slices.Contains(keep, h) {
+			return true, nil
 		}
-		if slices.Contains(keep, dd) {
-			continue
-		}
-		if err := fi.DeleteObject(d.ID(), sif.OptDeleteZero(true)); err != nil {
-			return err
-		}
+		return false, nil
 	}
-	return nil
-}
-
-// deleteRootIndex removes the RootIndex from a the SIF fi.
-func deleteRootIndex(fi *sif.FileImage) error {
-	desc, err := fi.GetDescriptor(sif.WithDataType(sif.DataOCIRootIndex))
-	if err != nil {
-		return err
-	}
-	return fi.DeleteObject(desc.ID())
 }
