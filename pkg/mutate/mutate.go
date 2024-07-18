@@ -28,11 +28,36 @@ func SetLayer(i int, l v1.Layer) Mutation {
 	}
 }
 
-// ReplaceLayers replaces all layers in the image with l. The layer is annotated with the specified
-// values.
+// ReplaceLayers replaces all layers in the image with l.
 func ReplaceLayers(l v1.Layer) Mutation {
 	return func(img *image) error {
 		img.overrides = []v1.Layer{l}
+		return nil
+	}
+}
+
+// replaceSelectedLayers replaces selected layers in the image with l.
+func replaceSelectedLayers(s layerSelector, l v1.Layer) Mutation {
+	return func(img *image) error {
+		var found bool
+		var overrides []v1.Layer
+
+		// Iterate over the current layers, replacing matching layers with rl.
+		for i, override := range img.overrides {
+			selected, err := s.indexSelected(i, len(img.overrides))
+			if err != nil {
+				return err
+			}
+
+			if !selected {
+				overrides = append(overrides, override)
+			} else if !found {
+				overrides = append(overrides, l)
+				found = true
+			}
+		}
+
+		img.overrides = overrides
 		return nil
 	}
 }

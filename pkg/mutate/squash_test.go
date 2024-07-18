@@ -16,6 +16,7 @@ func TestSquash(t *testing.T) {
 	tests := []struct {
 		name string
 		base v1.Image
+		s    layerSelector
 	}{
 		{
 			name: "RootDirEntry",
@@ -69,12 +70,17 @@ func TestSquash(t *testing.T) {
 			name: "HardLinkDeleteXattr",
 			base: corpus.Image(t, "hard-link-delete-xattr"),
 		},
+		{
+			name: "LayerSelector",
+			base: corpus.Image(t, "hard-link-delete-4"),
+			s:    rangeLayerSelector(0, 2),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var b bytes.Buffer
 
-			if err := squash(tt.base, &b); err != nil {
+			if err := squash(tt.base, tt.s, &b); err != nil {
 				t.Fatal(err)
 			}
 
