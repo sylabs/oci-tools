@@ -225,11 +225,11 @@ func (s *imageState) writeHardlinksFor(target string, root entry) (entry, error)
 	return root, nil
 }
 
-// squash writes a single, squashed TAR layer built from img to w.
-func squash(img v1.Image, w io.Writer) error {
-	ls, err := img.Layers()
+// squash writes a single, squashed TAR layer built from layers selected by s from img to w.
+func squash(img v1.Image, s layerSelector, w io.Writer) error {
+	ls, err := s.layersSelected(img)
 	if err != nil {
-		return fmt.Errorf("retrieving layers: %w", err)
+		return fmt.Errorf("selecting layers: %w", err)
 	}
 
 	tw := tar.NewWriter(w)
@@ -272,13 +272,14 @@ func squash(img v1.Image, w io.Writer) error {
 	return nil
 }
 
-// Squash replaces the layers in the base image with a single, squashed layer.
-func Squash(base v1.Image) (v1.Image, error) {
+// squashSelected replaces the layers selected by s in the base image with a single, squashed
+// layer.
+func squashSelected(base v1.Image, s layerSelector) (v1.Image, error) {
 	opener := func() (io.ReadCloser, error) {
 		pr, pw := io.Pipe()
 
 		go func() {
-			pw.CloseWithError(squash(base, pw))
+			pw.CloseWithError(squash(base, s, pw))
 		}()
 
 		return pr, nil
@@ -289,5 +290,16 @@ func Squash(base v1.Image) (v1.Image, error) {
 		return nil, err
 	}
 
-	return Apply(base, ReplaceLayers(l))
+	return Apply(base, replaceSelectedLayers(s, l))
+}
+
+// Squash replaces all layers in the base image with a single, squashed layer.
+func Squash(base v1.Image) (v1.Image, error) {
+	return squashSelected(base, nil)
+}
+
+// SquashSubset replaces the layers starting at start index and up to end index with a single,
+// squashed layer.
+func SquashSubset(base v1.Image, start, end int) (v1.Image, error) {
+	return squashSelected(base, rangeLayerSelector(start, end))
 }
