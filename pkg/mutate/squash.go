@@ -298,8 +298,8 @@ func Squash(base v1.Image) (v1.Image, error) {
 	return squashSelected(base, nil)
 }
 
-// SquashSubset replaces the layers starting at start index and up to end index with a single,
-// squashed layer.
+// SquashSubset replaces the layers starting at start index and up to (but not including) end index
+// with a single, squashed layer.
 func SquashSubset(base v1.Image, start, end int) (v1.Image, error) {
 	return squashSelected(base, rangeLayerSelector(start, end))
 }
