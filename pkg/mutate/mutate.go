@@ -79,6 +79,14 @@ func SetConfig(configFile any, configType types.MediaType) Mutation {
 	}
 }
 
+// SetArtifactType replaces the artifact type with the specified value.
+func SetArtifactType(artifactType string) Mutation {
+	return func(img *image) error {
+		img.artifactTypeOverride = artifactType
+		return nil
+	}
+}
+
 // Apply performs the specified mutation(s) to a base image, returning the resulting image.
 func Apply(base v1.Image, ms ...Mutation) (v1.Image, error) {
 	if len(ms) == 0 {
