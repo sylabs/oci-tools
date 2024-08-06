@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/google/go-containerregistry v0.20.1
-	github.com/sebdah/goldie/v2 v2.5.3
+	github.com/sebdah/goldie/v2 v2.5.5
 	github.com/sylabs/sif/v2 v2.18.0
 )
 
