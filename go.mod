@@ -1,11 +1,10 @@
 module github.com/sylabs/oci-tools
 
 go 1.22.0
-
 require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/sebdah/goldie/v2 v2.5.5
-	github.com/sylabs/sif/v2 v2.18.0
+	github.com/sylabs/sif/v2 v2.19.0
 )
 
 require (
@@ -26,5 +25,5 @@ require (
 	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 )
