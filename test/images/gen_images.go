@@ -429,10 +429,10 @@ func generateTARImages(path string) error {
 }
 
 func generateManyLayerImage(path string) error {
-	var ls []v1.Layer
-
 	// Generate 50 unique layers.
-	for i := 0; i < 50; i++ {
+	ls := make([]v1.Layer, 50)
+
+	for i := range len(ls) {
 		layer := []tarEntry{
 			{Typeflag: tar.TypeReg, Name: strconv.Itoa(i)},
 		}
@@ -450,7 +450,7 @@ func generateManyLayerImage(path string) error {
 			return err
 		}
 
-		ls = append(ls, l)
+		ls[i] = l
 	}
 
 	img, err := mutate.AppendLayers(empty.Image, ls...)
