@@ -14,23 +14,29 @@ import (
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
 
-// writeBlobToFileImage writes a blob to f.
-func (f *fileImage) writeBlobToFileImage(r io.Reader, rootIndex bool) error {
-	t := sif.DataOCIBlob
-	if rootIndex {
-		t = sif.DataOCIRootIndex
-	}
+// WriteBlob writes a blob to the SIF f, as a DataOCIBlob descriptor.
+func (f *OCIFileImage) WriteBlob(r io.Reader) error {
+	return f.writeBlob(r, sif.DataOCIBlob)
+}
 
+// writeRootIndex writes the RootIndex blob to the SIF f, as a
+// DataOCIRootIndex descriptor.
+func (f *OCIFileImage) writeRootIndex(r io.Reader) error {
+	return f.writeBlob(r, sif.DataOCIRootIndex)
+}
+
+func (f *OCIFileImage) writeBlob(r io.Reader, t sif.DataType) error {
 	di, err := sif.NewDescriptorInput(t, r)
 	if err != nil {
 		return err
 	}
 
-	return f.AddObject(di)
+	return f.sif.AddObject(di)
 }
 
-// writeIndexToSIF writes an image and all of its manifests and blobs to f.
-func (f *fileImage) writeImageToFileImage(img v1.Image) error {
+// WriteImage writes an image and all of its manifests and blobs to f. This
+// function does not update the RootIndex.
+func (f *OCIFileImage) WriteImage(img v1.Image) error {
 	ls, err := img.Layers()
 	if err != nil {
 		return err
@@ -42,7 +48,7 @@ func (f *fileImage) writeImageToFileImage(img v1.Image) error {
 			return err
 		}
 
-		if err := f.writeBlobToFileImage(rc, false); err != nil {
+		if err := f.WriteBlob(rc); err != nil {
 			return err
 		}
 	}
@@ -52,7 +58,7 @@ func (f *fileImage) writeImageToFileImage(img v1.Image) error {
 		return err
 	}
 
-	if err := f.writeBlobToFileImage(bytes.NewReader(cfg), false); err != nil {
+	if err := f.WriteBlob(bytes.NewReader(cfg)); err != nil {
 		return err
 	}
 
@@ -61,7 +67,7 @@ func (f *fileImage) writeImageToFileImage(img v1.Image) error {
 		return err
 	}
 
-	return f.writeBlobToFileImage(bytes.NewReader(rm), false)
+	return f.WriteBlob(bytes.NewReader(rm))
 }
 
 type withBlob interface {
@@ -94,8 +100,13 @@ func blobFromIndex(ii v1.ImageIndex, digest v1.Hash) (io.ReadCloser, error) {
 	return nil, errUnableToReadBlob
 }
 
-// writeIndexToFileImage writes an index and all of its child indexes, manifests and blobs to f.
-func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) error {
+// WriteIndex writes an index and all of its child indexes, manifests and blobs
+// to f. This function does not update the RootIndex.
+func (f *OCIFileImage) WriteIndex(ii v1.ImageIndex) error {
+	return f.writeIndex(ii, false)
+}
+
+func (f *OCIFileImage) writeIndex(ii v1.ImageIndex, rootIndex bool) error {
 	index, err := ii.IndexManifest()
 	if err != nil {
 		return err
@@ -110,7 +121,7 @@ func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) erro
 				return err
 			}
 
-			if err := f.writeIndexToFileImage(ii, false); err != nil {
+			if err := f.WriteIndex(ii); err != nil {
 				return err
 			}
 
@@ -120,7 +131,7 @@ func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) erro
 				return err
 			}
 
-			if err := f.writeImageToFileImage(img); err != nil {
+			if err := f.WriteImage(img); err != nil {
 				return err
 			}
 
@@ -131,7 +142,7 @@ func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) erro
 			}
 			defer rc.Close()
 
-			if err := f.writeBlobToFileImage(rc, false); err != nil {
+			if err := f.WriteBlob(rc); err != nil {
 				return err
 			}
 		}
@@ -142,7 +153,11 @@ func (f *fileImage) writeIndexToFileImage(ii v1.ImageIndex, rootIndex bool) erro
 		return err
 	}
 
-	return f.writeBlobToFileImage(bytes.NewReader(m), rootIndex)
+	if rootIndex {
+		return f.writeRootIndex(bytes.NewReader(m))
+	}
+
+	return f.WriteBlob(bytes.NewReader(m))
 }
 
 // numDescriptorsForImage returns the number of descriptors required to store img.
@@ -218,10 +233,12 @@ func OptWriteWithSpareDescriptorCapacity(n int64) WriteOpt {
 	}
 }
 
-// Write constructs a SIF at path from an ImageIndex.
+// Write constructs a SIF at path from an ImageIndex, which becomes the
+// RootIndex in the SIF.
 //
-// By default, the SIF is created with the exact number of descriptors required to represent ii. To
-// include spare descriptor capacity, consider using OptWriteWithSpareDescriptorCapacity.
+// By default, the SIF is created with the exact number of descriptors required
+// to represent ii. To include spare descriptor capacity, consider using
+// OptWriteWithSpareDescriptorCapacity.
 func Write(path string, ii v1.ImageIndex, opts ...WriteOpt) error {
 	wo := writeOpts{
 		spareDescriptors: 0,
@@ -247,7 +264,7 @@ func Write(path string, ii v1.ImageIndex, opts ...WriteOpt) error {
 	}
 	defer func() { _ = fi.UnloadContainer() }()
 
-	f := fileImage{fi}
+	f := OCIFileImage{fi}
 
-	return f.writeIndexToFileImage(ii, true)
+	return f.writeIndex(ii, true)
 }

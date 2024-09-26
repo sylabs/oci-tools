@@ -33,7 +33,7 @@ func OptUpdateTempDir(d string) UpdateOpt {
 	}
 }
 
-// Update modifies the SIF file associated with fi so that it holds the content
+// Update modifies the SIF file associated with f so that it holds the content
 // of ImageIndex ii. Any blobs in the SIF that are not referenced in ii are
 // removed from the SIF. Any blobs that are referenced in ii but not present in
 // the SIF are added to the SIF. The RootIndex of the SIF is replaced with ii.
@@ -41,7 +41,7 @@ func OptUpdateTempDir(d string) UpdateOpt {
 // Update may create one or more temporary files during the update process. By
 // default, the directory returned by os.TempDir is used. To override this,
 // consider using OptUpdateTmpDir.
-func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
+func (f *OCIFileImage) Update(ii v1.ImageIndex, opts ...UpdateOpt) error {
 	uo := updateOpts{
 		tempDir: os.TempDir(),
 	}
@@ -52,7 +52,7 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// If the existing OCI.RootIndex in the SIF matches ii, then there is nothing to do.
-	sifRootIndex, err := ImageIndexFromFileImage(fi)
+	sifRootIndex, err := f.ImageIndex()
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// Get a list of all existing OCI.Blob digests in the SIF
-	sifBlobs, err := sifBlobs(fi)
+	sifBlobs, err := sifBlobs(f.sif)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// Delete existing blobs from the SIF except those we want to keep.
-	if err := fi.DeleteObjects(selectBlobsExcept(keepBlobs),
+	if err := f.sif.DeleteObjects(selectBlobsExcept(keepBlobs),
 		sif.OptDeleteZero(true),
 		sif.OptDeleteCompact(true),
 	); err != nil {
@@ -102,13 +102,12 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// Write new (cached) blobs from ii into the SIF.
-	f := fileImage{fi}
 	for _, b := range cachedBlobs {
 		rc, err := readCacheBlob(b, blobCache)
 		if err != nil {
 			return err
 		}
-		if err := f.writeBlobToFileImage(rc, false); err != nil {
+		if err := f.WriteBlob(rc); err != nil {
 			return err
 		}
 		if err := rc.Close(); err != nil {
@@ -117,7 +116,19 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// Write the new RootIndex into the SIF.
-	return f.writeBlobToFileImage(bytes.NewReader(ri), true)
+	return f.writeRootIndex(bytes.NewReader(ri))
+}
+
+// Update is a convenience function, for backward compatibility, which calls
+// OCIFileImage.Update against the sif.FileImage fi.
+//
+// Deprecated: Use OCIFileImage.Update instead.
+func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
+	f, err := FromFileImage(fi)
+	if err != nil {
+		return err
+	}
+	return f.Update(ii, opts...)
 }
 
 // sifBlobs will return a list of digests for all OCI.Blob descriptors in fi.

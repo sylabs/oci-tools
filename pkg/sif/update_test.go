@@ -118,7 +118,13 @@ func TestUpdate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ii, err := sif.ImageIndexFromFileImage(fi)
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ii, err := ofi.ImageIndex()
 			if err != nil {
 				t.Fatal(err)
 			}

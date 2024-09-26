@@ -15,24 +15,25 @@ import (
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
 
-var _ v1.ImageIndex = (*imageIndex)(nil)
+var _ v1.ImageIndex = (*rootIndex)(nil)
 
-// ImageIndexFromFileImage returns a v1.ImageIndex corresponding to f.
+// ImageIndexFromFileImage is a convenience function which constructs a
+// FileImage and returns its v1.ImageIndex.
 func ImageIndexFromFileImage(fi *sif.FileImage) (v1.ImageIndex, error) {
-	f := &fileImage{fi}
+	f := &OCIFileImage{fi}
 
 	return f.ImageIndex()
 }
 
-type imageIndex struct {
-	f           *fileImage
+type rootIndex struct {
+	f           *OCIFileImage
 	desc        *v1.Descriptor
 	rawManifest []byte
 }
 
 // ImageIndex returns a v1.ImageIndex from f.
-func (f *fileImage) ImageIndex() (v1.ImageIndex, error) {
-	d, err := f.GetDescriptor(
+func (f *OCIFileImage) ImageIndex() (v1.ImageIndex, error) {
+	d, err := f.sif.GetDescriptor(
 		sif.WithDataType(sif.DataOCIRootIndex),
 	)
 	if err != nil {
@@ -49,7 +50,7 @@ func (f *fileImage) ImageIndex() (v1.ImageIndex, error) {
 		return nil, err
 	}
 
-	return &imageIndex{
+	return &rootIndex{
 		f: f,
 		desc: &v1.Descriptor{
 			MediaType: types.OCIImageIndex,
@@ -61,41 +62,41 @@ func (f *fileImage) ImageIndex() (v1.ImageIndex, error) {
 }
 
 // MediaType of this image's manifest.
-func (ix *imageIndex) MediaType() (types.MediaType, error) {
+func (ix *rootIndex) MediaType() (types.MediaType, error) {
 	return ix.desc.MediaType, nil
 }
 
 // Digest returns the sha256 of this index's manifest.
-func (ix *imageIndex) Digest() (v1.Hash, error) {
+func (ix *rootIndex) Digest() (v1.Hash, error) {
 	return ix.desc.Digest, nil
 }
 
 // Size returns the size of the manifest.
-func (ix *imageIndex) Size() (int64, error) {
+func (ix *rootIndex) Size() (int64, error) {
 	return ix.desc.Size, nil
 }
 
 // IndexManifest returns this image index's manifest object.
-func (ix *imageIndex) IndexManifest() (*v1.IndexManifest, error) {
+func (ix *rootIndex) IndexManifest() (*v1.IndexManifest, error) {
 	var im v1.IndexManifest
 	err := json.Unmarshal(ix.rawManifest, &im)
 	return &im, err
 }
 
 // RawManifest returns the serialized bytes of IndexManifest().
-func (ix *imageIndex) RawManifest() ([]byte, error) {
+func (ix *rootIndex) RawManifest() ([]byte, error) {
 	return ix.rawManifest, nil
 }
 
 // Descriptor returns the original descriptor from an index manifest. See partial.Descriptor.
-func (ix *imageIndex) Descriptor() (*v1.Descriptor, error) {
+func (ix *rootIndex) Descriptor() (*v1.Descriptor, error) {
 	return ix.desc, nil
 }
 
 var errUnexpectedMediaType = errors.New("unexpected media type")
 
 // Image returns a v1.Image that this ImageIndex references.
-func (ix *imageIndex) Image(h v1.Hash) (v1.Image, error) {
+func (ix *rootIndex) Image(h v1.Hash) (v1.Image, error) {
 	desc, err := ix.findDescriptor(h)
 	if err != nil {
 		return nil, err
@@ -119,7 +120,7 @@ func (ix *imageIndex) Image(h v1.Hash) (v1.Image, error) {
 }
 
 // ImageIndex returns a v1.ImageIndex that this ImageIndex references.
-func (ix *imageIndex) ImageIndex(h v1.Hash) (v1.ImageIndex, error) {
+func (ix *rootIndex) ImageIndex(h v1.Hash) (v1.ImageIndex, error) {
 	desc, err := ix.findDescriptor(h)
 	if err != nil {
 		return nil, err
@@ -134,7 +135,7 @@ func (ix *imageIndex) ImageIndex(h v1.Hash) (v1.ImageIndex, error) {
 		return nil, err
 	}
 
-	return &imageIndex{
+	return &rootIndex{
 		f:           ix.f,
 		desc:        desc,
 		rawManifest: b,
@@ -144,7 +145,7 @@ func (ix *imageIndex) ImageIndex(h v1.Hash) (v1.ImageIndex, error) {
 var errDescriptorNotFoundInIndex = errors.New("descriptor not found in index")
 
 // findDescriptor returns the descriptor with the supplied digest.
-func (ix *imageIndex) findDescriptor(h v1.Hash) (*v1.Descriptor, error) {
+func (ix *rootIndex) findDescriptor(h v1.Hash) (*v1.Descriptor, error) {
 	im, err := ix.IndexManifest()
 	if err != nil {
 		return nil, err
