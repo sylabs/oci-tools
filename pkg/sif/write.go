@@ -34,9 +34,9 @@ func (f *OCIFileImage) writeBlob(r io.Reader, t sif.DataType) error {
 	return f.sif.AddObject(di)
 }
 
-// WriteImage writes an image and all of its manifests and blobs to f. This
+// writeImage writes an image and all of its manifests and blobs to f. This
 // function does not update the RootIndex.
-func (f *OCIFileImage) WriteImage(img v1.Image) error {
+func (f *OCIFileImage) writeImage(img v1.Image) error {
 	ls, err := img.Layers()
 	if err != nil {
 		return err
@@ -100,13 +100,13 @@ func blobFromIndex(ii v1.ImageIndex, digest v1.Hash) (io.ReadCloser, error) {
 	return nil, errUnableToReadBlob
 }
 
-// WriteIndex writes an index and all of its child indexes, manifests and blobs
+// writeIndex writes an index and all of its child indexes, manifests and blobs
 // to f. This function does not update the RootIndex.
-func (f *OCIFileImage) WriteIndex(ii v1.ImageIndex) error {
-	return f.writeIndex(ii, false)
+func (f *OCIFileImage) writeIndex(ii v1.ImageIndex) error {
+	return f.writeIndexorRootIndex(ii, false)
 }
 
-func (f *OCIFileImage) writeIndex(ii v1.ImageIndex, rootIndex bool) error {
+func (f *OCIFileImage) writeIndexorRootIndex(ii v1.ImageIndex, rootIndex bool) error {
 	index, err := ii.IndexManifest()
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func (f *OCIFileImage) writeIndex(ii v1.ImageIndex, rootIndex bool) error {
 				return err
 			}
 
-			if err := f.WriteIndex(ii); err != nil {
+			if err := f.writeIndex(ii); err != nil {
 				return err
 			}
 
@@ -131,7 +131,7 @@ func (f *OCIFileImage) writeIndex(ii v1.ImageIndex, rootIndex bool) error {
 				return err
 			}
 
-			if err := f.WriteImage(img); err != nil {
+			if err := f.writeImage(img); err != nil {
 				return err
 			}
 
@@ -266,5 +266,5 @@ func Write(path string, ii v1.ImageIndex, opts ...WriteOpt) error {
 
 	f := OCIFileImage{fi}
 
-	return f.writeIndex(ii, true)
+	return f.writeIndexorRootIndex(ii, true)
 }
