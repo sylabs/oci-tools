@@ -124,7 +124,7 @@ func TestUpdate(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ii, err := ofi.ImageIndex()
+			ii, err := ofi.RootIndex()
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -33,15 +33,16 @@ func OptUpdateTempDir(d string) UpdateOpt {
 	}
 }
 
-// Update modifies the SIF file associated with f so that it holds the content
-// of ImageIndex ii. Any blobs in the SIF that are not referenced in ii are
-// removed from the SIF. Any blobs that are referenced in ii but not present in
-// the SIF are added to the SIF. The RootIndex of the SIF is replaced with ii.
+// UpdateRootIndex modifies the SIF file associated with f so that it holds the
+// content of ImageIndex ii. The RootIndex of the SIF is replaced with ii. Any
+// blobs in the SIF that are not referenced in ii are removed from the SIF. Any
+// blobs that are referenced in ii but not present in the SIF are added to the
+// SIF.
 //
-// Update may create one or more temporary files during the update process. By
-// default, the directory returned by os.TempDir is used. To override this,
-// consider using OptUpdateTmpDir.
-func (f *OCIFileImage) Update(ii v1.ImageIndex, opts ...UpdateOpt) error {
+// UpdateRootIndex may create one or more temporary files during the update
+// process. By default, the directory returned by os.TempDir is used. To
+// override this, consider using OptUpdateTmpDir.
+func (f *OCIFileImage) UpdateRootIndex(ii v1.ImageIndex, opts ...UpdateOpt) error {
 	uo := updateOpts{
 		tempDir: os.TempDir(),
 	}
@@ -52,7 +53,7 @@ func (f *OCIFileImage) Update(ii v1.ImageIndex, opts ...UpdateOpt) error {
 	}
 
 	// If the existing OCI.RootIndex in the SIF matches ii, then there is nothing to do.
-	sifRootIndex, err := f.ImageIndex()
+	sifRootIndex, err := f.RootIndex()
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func (f *OCIFileImage) Update(ii v1.ImageIndex, opts ...UpdateOpt) error {
 }
 
 // Update is a convenience function, for backward compatibility, which calls
-// OCIFileImage.Update against the sif.FileImage fi.
+// OCIFileImage.UpdateRootIndex against the sif.FileImage fi.
 //
 // Deprecated: Use OCIFileImage.Update instead.
 func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
@@ -128,7 +129,7 @@ func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	if err != nil {
 		return err
 	}
-	return f.Update(ii, opts...)
+	return f.UpdateRootIndex(ii, opts...)
 }
 
 // sifBlobs will return a list of digests for all OCI.Blob descriptors in fi.
