@@ -17,22 +17,27 @@ import (
 
 var _ v1.ImageIndex = (*imageIndex)(nil)
 
-// ImageIndexFromFileImage returns a v1.ImageIndex corresponding to f.
+// ImageIndexFromFileImage is a convenience function which constructs an
+// OCIFileImage from a sif.FileImage, and returns its RootIndex as a
+// v1.ImageIndex.
+//
+// Deprecated: Use OCIFileImage.RootIndex instead. ImageIndexFromFileImage will
+// be removed in a future version.
 func ImageIndexFromFileImage(fi *sif.FileImage) (v1.ImageIndex, error) {
-	f := &fileImage{fi}
+	f := &OCIFileImage{fi}
 
-	return f.ImageIndex()
+	return f.RootIndex()
 }
 
 type imageIndex struct {
-	f           *fileImage
+	f           *OCIFileImage
 	desc        *v1.Descriptor
 	rawManifest []byte
 }
 
-// ImageIndex returns a v1.ImageIndex from f.
-func (f *fileImage) ImageIndex() (v1.ImageIndex, error) {
-	d, err := f.GetDescriptor(
+// RootIndex returns the RootIndex of f as a v1.ImageIndex.
+func (f *OCIFileImage) RootIndex() (v1.ImageIndex, error) {
+	d, err := f.sif.GetDescriptor(
 		sif.WithDataType(sif.DataOCIRootIndex),
 	)
 	if err != nil {

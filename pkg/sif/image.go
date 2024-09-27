@@ -17,7 +17,7 @@ import (
 var _ v1.Image = (*image)(nil)
 
 type image struct {
-	f           *fileImage
+	f           *OCIFileImage
 	desc        *v1.Descriptor
 	rawManifest []byte
 }

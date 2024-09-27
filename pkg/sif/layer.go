@@ -15,7 +15,7 @@ import (
 var _ v1.Layer = (*Layer)(nil)
 
 type Layer struct {
-	f    *fileImage
+	f    *OCIFileImage
 	desc v1.Descriptor
 }
 
