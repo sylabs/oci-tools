@@ -11,6 +11,8 @@ import (
 	"fmt"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
@@ -63,6 +65,38 @@ func (f *OCIFileImage) RootIndex() (v1.ImageIndex, error) {
 		},
 		rawManifest: b,
 	}, nil
+}
+
+var (
+	errNoMatchingIndex         = errors.New("no index found matching criteria")
+	errMultipleMatchingIndices = errors.New("multiple indices match criteria")
+)
+
+// Index returns a single ImageIndex stored in f, that is selected by the provided
+// Matcher. If more than one index matches, or no index matches, an error is
+// returned.
+func (f *OCIFileImage) Index(m match.Matcher, _ ...Option) (v1.ImageIndex, error) {
+	ri, err := f.RootIndex()
+	if err != nil {
+		return nil, err
+	}
+
+	matches, err := partial.FindIndexes(ri, m)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) > 1 {
+		return nil, errMultipleMatchingIndices
+	}
+	if len(matches) == 0 {
+		return nil, errNoMatchingIndex
+	}
+
+	d, err := matches[0].Digest()
+	if err != nil {
+		return nil, err
+	}
+	return ri.ImageIndex(d)
 }
 
 // MediaType of this image's manifest.
