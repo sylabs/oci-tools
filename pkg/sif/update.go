@@ -123,7 +123,7 @@ func (f *OCIFileImage) UpdateRootIndex(ii v1.ImageIndex, opts ...UpdateOpt) erro
 // Update is a convenience function, for backward compatibility, which calls
 // OCIFileImage.UpdateRootIndex against the sif.FileImage fi.
 //
-// Deprecated: Use OCIFileImage.Update instead.
+// Deprecated: Use OCIFileImage.UpdateRootIndex instead.
 func Update(fi *sif.FileImage, ii v1.ImageIndex, opts ...UpdateOpt) error {
 	f, err := FromFileImage(fi)
 	if err != nil {

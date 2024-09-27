@@ -101,12 +101,8 @@ func blobFromIndex(ii v1.ImageIndex, digest v1.Hash) (io.ReadCloser, error) {
 }
 
 // writeIndex writes an index and all of its child indexes, manifests and blobs
-// to f. This function does not update the RootIndex.
-func (f *OCIFileImage) writeIndex(ii v1.ImageIndex) error {
-	return f.writeIndexorRootIndex(ii, false)
-}
-
-func (f *OCIFileImage) writeIndexorRootIndex(ii v1.ImageIndex, rootIndex bool) error {
+// to f.
+func (f *OCIFileImage) writeIndex(ii v1.ImageIndex, rootIndex bool) error {
 	index, err := ii.IndexManifest()
 	if err != nil {
 		return err
@@ -121,7 +117,7 @@ func (f *OCIFileImage) writeIndexorRootIndex(ii v1.ImageIndex, rootIndex bool) e
 				return err
 			}
 
-			if err := f.writeIndex(ii); err != nil {
+			if err := f.writeIndex(ii, false); err != nil {
 				return err
 			}
 
@@ -266,5 +262,5 @@ func Write(path string, ii v1.ImageIndex, opts ...WriteOpt) error {
 
 	f := OCIFileImage{fi}
 
-	return f.writeIndexorRootIndex(ii, true)
+	return f.writeIndex(ii, true)
 }

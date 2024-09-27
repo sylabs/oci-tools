@@ -18,8 +18,11 @@ import (
 var _ v1.ImageIndex = (*imageIndex)(nil)
 
 // ImageIndexFromFileImage is a convenience function which constructs an
-// OCIFileImage from a sif.FileImage, and returns its RootIndex as
-// a v1.ImageIndex.
+// OCIFileImage from a sif.FileImage, and returns its RootIndex as a
+// v1.ImageIndex.
+//
+// Deprecated: Use OCIFileImage.RootIndex instead. ImageIndexFromFileImage will
+// be removed in a future version.
 func ImageIndexFromFileImage(fi *sif.FileImage) (v1.ImageIndex, error) {
 	f := &OCIFileImage{fi}
 
