@@ -11,10 +11,14 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
+
+const refAnnotation = "org.opencontainers.image.ref.name"
 
 // updateOpts accumulates update options.
 type updateOpts struct {
@@ -329,4 +333,70 @@ func selectBlobsExcept(keep []v1.Hash) sif.DescriptorSelectorFunc {
 		}
 		return false, nil
 	}
+}
+
+// appendOpts accumulates append options.
+type appendOpts struct {
+	tempDir string
+	ref     name.Reference
+}
+
+// AppendOpt are used to specify options to apply when appending to a SIF.
+type AppendOpt func(*appendOpts) error
+
+// OptAppendTempDir sets the directory to use for temporary files. If not set, the
+// directory returned by os.TempDir is used.
+func OptAppendTempDir(d string) AppendOpt {
+	return func(c *appendOpts) error {
+		c.tempDir = d
+		return nil
+	}
+}
+
+// OptAppendReference sets the reference to be set for the appended item in the
+// RootIndex. The reference is added as an `org.opencontainers.image.ref.name`
+// in the RootIndex.
+func OptAppendReference(r name.Reference) AppendOpt {
+	return func(c *appendOpts) error {
+		c.ref = r
+		return nil
+	}
+}
+
+// AppendImage appends an image to the SIF f, updating the RootIndex to
+// reference it.
+func (f *OCIFileImage) AppendImage(img v1.Image, opts ...AppendOpt) error {
+	return f.append(img, opts...)
+}
+
+// AppendIndex appends an index to the SIF f, updating the RootIndex to
+// reference it.
+func (f *OCIFileImage) AppendIndex(ii v1.ImageIndex, opts ...AppendOpt) error {
+	return f.append(ii, opts...)
+}
+
+func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
+	ao := appendOpts{
+		tempDir: os.TempDir(),
+	}
+	for _, opt := range opts {
+		if err := opt(&ao); err != nil {
+			return err
+		}
+	}
+
+	ri, err := f.RootIndex()
+	if err != nil {
+		return err
+	}
+
+	ia := mutate.IndexAddendum{Add: add}
+	if ao.ref != nil {
+		ia.Annotations = map[string]string{
+			refAnnotation: ao.ref.Name(),
+		}
+	}
+	ri = mutate.AppendManifests(ri, ia)
+
+	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
 }
