@@ -432,7 +432,7 @@ func generateManyLayerImage(path string) error {
 	// Generate 50 unique layers.
 	ls := make([]v1.Layer, 50)
 
-	for i := range len(ls) {
+	for i := range ls {
 		layer := []tarEntry{
 			{Typeflag: tar.TypeReg, Name: strconv.Itoa(i)},
 		}
