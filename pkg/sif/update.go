@@ -6,6 +6,7 @@ package sif
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"maps"
 	"os"
@@ -14,13 +15,17 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
 
-const refAnnotation = "org.opencontainers.image.ref.name"
+const (
+	refAnnotation     = "org.opencontainers.image.ref.name"
+	prevRefAnnotation = "vnd.sylabs.image.prev.ref.name"
+)
 
 // updateOpts accumulates update options.
 type updateOpts struct {
@@ -393,17 +398,75 @@ func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
 	}
 
 	ia := mutate.IndexAddendum{Add: add}
-	d, err := partial.Descriptor(add)
-	if err != nil {
-		return err
+
+	if ao.ref != nil {
+		ri, err = removeRefAnnotation(ri, ao.ref)
+		if err != nil {
+			return err
+		}
+
+		d, err := partial.Descriptor(add)
+		if err != nil {
+			return err
+		}
+		if d.Annotations != nil {
+			ia.Annotations = maps.Clone(d.Annotations)
+		} else {
+			ia.Annotations = make(map[string]string)
+		}
+		ia.Annotations[refAnnotation] = ao.ref.Name()
 	}
-	if d.Annotations != nil {
-		ia.Annotations = maps.Clone(d.Annotations)
-	} else {
-		ia.Annotations = make(map[string]string)
-	}
-	ia.Annotations[refAnnotation] = ao.ref.Name()
 	ri = mutate.AppendManifests(ri, ia)
 
 	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
+}
+
+var errMultipleRefNames = errors.New("multiple org.opencontainers.image.ref.name annotations found with same value")
+
+// removeRefAnnotation removes an existing "org.opencontainers.image.ref.name"
+// annotation with the provided value from the ImageIndex ii.
+func removeRefAnnotation(ii v1.ImageIndex, ref name.Reference) (v1.ImageIndex, error) {
+	// Find any desciptor with matching annotation.
+	m := match.Annotation(refAnnotation, ref.Name())
+	matches, err := partial.FindManifests(ii, m)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) > 1 {
+		return nil, errMultipleRefNames
+	}
+	if len(matches) == 0 {
+		return ii, nil
+	}
+	oldDesc := matches[0]
+
+	// Retrieve as an appendable Image / ImageIndex.
+	var add mutate.Appendable
+	switch {
+	case oldDesc.MediaType.IsImage():
+		add, err = ii.Image(oldDesc.Digest)
+	case oldDesc.MediaType.IsIndex():
+		add, err = ii.ImageIndex(oldDesc.Digest)
+	default:
+		return nil, errUnexpectedMediaType
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Replace descriptor without the ref.name annotation
+	ia := mutate.IndexAddendum{Add: add}
+	d, err := partial.Descriptor(add)
+	if err != nil {
+		return nil, err
+	}
+	ia.Annotations = maps.Clone(d.Annotations)
+	delete(ia.Annotations, refAnnotation)
+	// If, after deleting the refAnnotation, ia.Annotations becomes an empty
+	// map, then ggcr won't override what's in add... so we force the issue with
+	// an annotation holding the previous ref.name.
+	ia.Annotations[prevRefAnnotation] = ref.Name()
+
+	ii = mutate.RemoveManifests(ii, m)
+	return mutate.AppendManifests(ii, ia), nil
 }
