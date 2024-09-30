@@ -173,7 +173,7 @@ func TestAppendImage(t *testing.T) {
 			opts: []sif.AppendOpt{},
 		},
 		{
-			name: "WithReference", // Replaces many layers with a single layer
+			name: "WithReference",
 			base: "hello-world-docker-v2-manifest",
 			opts: []sif.AppendOpt{
 				sif.OptAppendReference(name.MustParseReference("myimage:v1", name.WithDefaultRegistry(""))),
@@ -234,7 +234,7 @@ func TestAppendIndex(t *testing.T) {
 			opts: []sif.AppendOpt{},
 		},
 		{
-			name: "WithReference", // Replaces many layers with a single layer
+			name: "WithReference",
 			base: "hello-world-docker-v2-manifest",
 			opts: []sif.AppendOpt{
 				sif.OptAppendReference(name.MustParseReference("myindex:v1", name.WithDefaultRegistry(""))),
