@@ -7,6 +7,7 @@ package sif
 import (
 	"bytes"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
@@ -391,11 +393,16 @@ func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
 	}
 
 	ia := mutate.IndexAddendum{Add: add}
-	if ao.ref != nil {
-		ia.Annotations = map[string]string{
-			refAnnotation: ao.ref.Name(),
-		}
+	d, err := partial.Descriptor(add)
+	if err != nil {
+		return err
 	}
+	if d.Annotations != nil {
+		ia.Annotations = maps.Clone(d.Annotations)
+	} else {
+		ia.Annotations = make(map[string]string)
+	}
+	ia.Annotations[refAnnotation] = ao.ref.Name()
 	ri = mutate.AppendManifests(ri, ia)
 
 	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
