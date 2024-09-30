@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	match "github.com/google/go-containerregistry/pkg/v1/match"
 	v1mutate "github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/types"
@@ -313,4 +314,128 @@ func TestAppendMultiple(t *testing.T) {
 		goldie.WithTestNameForDir(true),
 	)
 	g.Assert(t, "image", b)
+}
+
+func TestRemoveBlob(t *testing.T) {
+	validDigest, err := v1.NewHash("sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	otherDigest, err := v1.NewHash("sha256:e66fc843f1291ede94f0ecb3dbd8d277d4b05a8a4ceba1e211365dae9adb17da")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		base    string
+		digest  v1.Hash
+		wantErr bool
+	}{
+		{
+			name:    "Valid",
+			base:    "hello-world-docker-v2-manifest",
+			digest:  validDigest,
+			wantErr: false,
+		},
+		{
+			name:    "NotFound",
+			base:    "hello-world-docker-v2-manifest",
+			digest:  otherDigest,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sifPath := corpus.SIF(t, tt.base, sif.OptWriteWithSpareDescriptorCapacity(8))
+			fi, err := ssif.LoadContainerFromPath(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = ofi.RemoveBlob(tt.digest)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error, but nil returned")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := fi.UnloadContainer(); err != nil {
+				t.Fatal(err)
+			}
+
+			b, err := os.ReadFile(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g := goldie.New(t,
+				goldie.WithTestNameForDir(true),
+			)
+
+			g.Assert(t, tt.name, b)
+		})
+	}
+}
+
+func TestRemoveManifests(t *testing.T) {
+	tests := []struct {
+		name    string
+		matcher match.Matcher
+		base    string
+	}{
+		{
+			name:    "Valid",
+			base:    "hello-world-docker-v2-manifest-list",
+			matcher: match.Platforms(v1.Platform{OS: "linux", Architecture: "ppc64le"}),
+		},
+		{
+			name:    "NoMatch",
+			base:    "hello-world-docker-v2-manifest-list",
+			matcher: match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sifPath := corpus.SIF(t, tt.base, sif.OptWriteWithSpareDescriptorCapacity(8))
+			fi, err := ssif.LoadContainerFromPath(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := ofi.RemoveManifests(tt.matcher); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := fi.UnloadContainer(); err != nil {
+				t.Fatal(err)
+			}
+
+			b, err := os.ReadFile(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g := goldie.New(t,
+				goldie.WithTestNameForDir(true),
+			)
+
+			g.Assert(t, tt.name, b)
+		})
+	}
 }
