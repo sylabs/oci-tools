@@ -4,6 +4,7 @@ go 1.22.5
 
 require (
 	github.com/google/go-containerregistry v0.20.2
+	github.com/opencontainers/image-spec v1.1.0
 	github.com/sebdah/goldie/v2 v2.5.5
 	github.com/sylabs/sif/v2 v2.19.1
 )
@@ -18,7 +19,6 @@ require (
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
