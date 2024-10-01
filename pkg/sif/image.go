@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
@@ -20,6 +21,38 @@ type image struct {
 	f           *OCIFileImage
 	desc        *v1.Descriptor
 	rawManifest []byte
+}
+
+var (
+	errNoMatchingImage        = errors.New("no image found matching criteria")
+	errMultipleMatchingImages = errors.New("multiple images match criteria")
+)
+
+// Image returns a single Image stored in f, that is selected by the provided
+// Matcher. If more than one image matches, or no image matches, an error is
+// returned.
+func (f *OCIFileImage) Image(m match.Matcher, _ ...Option) (v1.Image, error) {
+	ri, err := f.RootIndex()
+	if err != nil {
+		return nil, err
+	}
+
+	matches, err := partial.FindImages(ri, m)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) > 1 {
+		return nil, errMultipleMatchingImages
+	}
+	if len(matches) == 0 {
+		return nil, errNoMatchingImage
+	}
+
+	d, err := matches[0].Digest()
+	if err != nil {
+		return nil, err
+	}
+	return ri.Image(d)
 }
 
 // Layers returns the ordered collection of filesystem layers that comprise this image. The order
