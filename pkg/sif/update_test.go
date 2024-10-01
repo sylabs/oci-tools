@@ -439,3 +439,95 @@ func TestRemoveManifests(t *testing.T) {
 		})
 	}
 }
+
+//nolint:dupl
+func TestReplace(t *testing.T) {
+	r := rand.NewSource(randomSeed)
+	newImage, err := random.Image(64, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+	newIndex, err := random.Index(64, 1, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	replaceImage := func(ofi *sif.OCIFileImage, m match.Matcher) error { return ofi.ReplaceImage(newImage, m) }
+	replaceIndex := func(ofi *sif.OCIFileImage, m match.Matcher) error { return ofi.ReplaceIndex(newIndex, m) }
+	tests := []struct {
+		name        string
+		base        string
+		replacement func(ofi *sif.OCIFileImage, m match.Matcher) error
+		matcher     match.Matcher
+	}{
+		{
+			name:        "ReplaceImageManifest",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceImage,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "arm64", Variant: "v8"}),
+		},
+		{
+			name:        "ReplaceImageManifestList",
+			base:        "hello-world-docker-v2-manifest-list",
+			replacement: replaceImage,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "arm64", Variant: "v8"}),
+		},
+		{
+			name:        "ReplaceImageNoMatch",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceImage,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
+		},
+		{
+			name:        "ReplaceIndexManifest",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceIndex,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "arm64", Variant: "v8"}),
+		},
+		{
+			name:        "ReplaceIndexManifestList",
+			base:        "hello-world-docker-v2-manifest-list",
+			replacement: replaceIndex,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "arm64", Variant: "v8"}),
+		},
+		{
+			name:        "ReplaceIndexNoMatch",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceIndex,
+			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sifPath := corpus.SIF(t, tt.base, sif.OptWriteWithSpareDescriptorCapacity(8))
+			fi, err := ssif.LoadContainerFromPath(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tt.replacement(ofi, tt.matcher); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := fi.UnloadContainer(); err != nil {
+				t.Fatal(err)
+			}
+
+			b, err := os.ReadFile(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g := goldie.New(t,
+				goldie.WithTestNameForDir(true),
+			)
+
+			g.Assert(t, tt.name, b)
+		})
+	}
+}
