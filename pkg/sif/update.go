@@ -7,12 +7,18 @@ package sif
 import (
 	"bytes"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
 
@@ -329,4 +335,96 @@ func selectBlobsExcept(keep []v1.Hash) sif.DescriptorSelectorFunc {
 		}
 		return false, nil
 	}
+}
+
+// appendOpts accumulates append options.
+type appendOpts struct {
+	tempDir string
+	ref     name.Reference
+}
+
+// AppendOpt are used to specify options to apply when appending to a SIF.
+type AppendOpt func(*appendOpts) error
+
+// OptAppendTempDir sets the directory to use for temporary files. If not set, the
+// directory returned by os.TempDir is used.
+func OptAppendTempDir(d string) AppendOpt {
+	return func(c *appendOpts) error {
+		c.tempDir = d
+		return nil
+	}
+}
+
+// OptAppendReference sets the reference to be set for the appended item in the
+// RootIndex. The reference is added as an `org.opencontainers.image.ref.name`
+// in the RootIndex.
+func OptAppendReference(r name.Reference) AppendOpt {
+	return func(c *appendOpts) error {
+		c.ref = r
+		return nil
+	}
+}
+
+// AppendImage appends an image to the SIF f, updating the RootIndex to
+// reference it.
+func (f *OCIFileImage) AppendImage(img v1.Image, opts ...AppendOpt) error {
+	return f.append(img, opts...)
+}
+
+// AppendIndex appends an index to the SIF f, updating the RootIndex to
+// reference it.
+func (f *OCIFileImage) AppendIndex(ii v1.ImageIndex, opts ...AppendOpt) error {
+	return f.append(ii, opts...)
+}
+
+func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
+	ao := appendOpts{
+		tempDir: os.TempDir(),
+	}
+	for _, opt := range opts {
+		if err := opt(&ao); err != nil {
+			return err
+		}
+	}
+
+	ri, err := f.RootIndex()
+	if err != nil {
+		return err
+	}
+
+	ia := mutate.IndexAddendum{Add: add}
+
+	if ao.ref != nil {
+		ri, err = removeRefAnnotation(ri, ao.ref)
+		if err != nil {
+			return err
+		}
+
+		d, err := partial.Descriptor(add)
+		if err != nil {
+			return err
+		}
+		if d.Annotations != nil {
+			ia.Annotations = maps.Clone(d.Annotations)
+		} else {
+			ia.Annotations = make(map[string]string)
+		}
+		ia.Annotations[imagespec.AnnotationRefName] = ao.ref.Name()
+	}
+	ri = mutate.AppendManifests(ri, ia)
+
+	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
+}
+
+// removeRefAnnotation removes an existing "org.opencontainers.image.ref.name"
+// annotation with the provided value from the ImageIndex ii.
+func removeRefAnnotation(ii v1.ImageIndex, ref name.Reference) (v1.ImageIndex, error) {
+	return editManifestDescriptors(
+		ii,
+		match.Name(ref.Name()),
+		func(desc v1.Descriptor) v1.Descriptor {
+			delete(desc.Annotations, imagespec.AnnotationRefName)
+			return desc
+		},
+	)
 }

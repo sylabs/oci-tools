@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	v1mutate "github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -151,4 +152,165 @@ func TestUpdate(t *testing.T) {
 			g.Assert(t, tt.name, b)
 		})
 	}
+}
+
+//nolint:dupl
+func TestAppendImage(t *testing.T) {
+	r := rand.NewSource(randomSeed)
+	newImage, err := random.Image(64, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		base string
+		opts []sif.AppendOpt
+	}{
+		{
+			name: "Default",
+			base: "hello-world-docker-v2-manifest",
+			opts: []sif.AppendOpt{},
+		},
+		{
+			name: "WithReference",
+			base: "hello-world-docker-v2-manifest",
+			opts: []sif.AppendOpt{
+				sif.OptAppendReference(name.MustParseReference("myimage:v1", name.WithDefaultRegistry(""))),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sifPath := corpus.SIF(t, tt.base, sif.OptWriteWithSpareDescriptorCapacity(8))
+			fi, err := ssif.LoadContainerFromPath(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := ofi.AppendImage(newImage, tt.opts...); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := fi.UnloadContainer(); err != nil {
+				t.Fatal(err)
+			}
+
+			b, err := os.ReadFile(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g := goldie.New(t,
+				goldie.WithTestNameForDir(true),
+			)
+
+			g.Assert(t, tt.name, b)
+		})
+	}
+}
+
+//nolint:dupl
+func TestAppendIndex(t *testing.T) {
+	r := rand.NewSource(randomSeed)
+	newIndex, err := random.Index(64, 1, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		base string
+		opts []sif.AppendOpt
+	}{
+		{
+			name: "Default",
+			base: "hello-world-docker-v2-manifest",
+			opts: []sif.AppendOpt{},
+		},
+		{
+			name: "WithReference",
+			base: "hello-world-docker-v2-manifest",
+			opts: []sif.AppendOpt{
+				sif.OptAppendReference(name.MustParseReference("myindex:v1", name.WithDefaultRegistry(""))),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sifPath := corpus.SIF(t, tt.base, sif.OptWriteWithSpareDescriptorCapacity(8))
+			fi, err := ssif.LoadContainerFromPath(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ofi, err := sif.FromFileImage(fi)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := ofi.AppendIndex(newIndex, tt.opts...); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := fi.UnloadContainer(); err != nil {
+				t.Fatal(err)
+			}
+
+			b, err := os.ReadFile(sifPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g := goldie.New(t,
+				goldie.WithTestNameForDir(true),
+			)
+
+			g.Assert(t, tt.name, b)
+		})
+	}
+}
+
+func TestAppendMultiple(t *testing.T) {
+	r := rand.NewSource(randomSeed)
+	image1, err := random.Image(64, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+	image2, err := random.Image(64, 1, random.WithSource(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sifPath := corpus.SIF(t, "hello-world-docker-v2-manifest", sif.OptWriteWithSpareDescriptorCapacity(8))
+	fi, err := ssif.LoadContainerFromPath(sifPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ofi, err := sif.FromFileImage(fi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	referenceOpt := sif.OptAppendReference(name.MustParseReference("myimage:v1", name.WithDefaultRegistry("")))
+	if err := ofi.AppendImage(image1, referenceOpt); err != nil {
+		t.Fatal(err)
+	}
+	if err := ofi.AppendImage(image2, referenceOpt); err != nil {
+		t.Fatal(err)
+	}
+	if err := fi.UnloadContainer(); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(sifPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := goldie.New(t,
+		goldie.WithTestNameForDir(true),
+	)
+	g.Assert(t, "image", b)
 }
