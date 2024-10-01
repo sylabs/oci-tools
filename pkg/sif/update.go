@@ -408,17 +408,27 @@ func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
 		return err
 	}
 
+	ri, err = appendToIndex(ri, add, ao)
+	if err != nil {
+		return err
+	}
+
+	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
+}
+
+func appendToIndex(base v1.ImageIndex, add mutate.Appendable, ao appendOpts) (v1.ImageIndex, error) {
 	ia := mutate.IndexAddendum{Add: add}
 
+	var err error
 	if ao.ref != nil {
-		ri, err = removeRefAnnotation(ri, ao.ref)
+		base, err = removeRefAnnotation(base, ao.ref)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		d, err := partial.Descriptor(add)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if d.Annotations != nil {
 			ia.Annotations = maps.Clone(d.Annotations)
@@ -427,9 +437,8 @@ func (f *OCIFileImage) append(add mutate.Appendable, opts ...AppendOpt) error {
 		}
 		ia.Annotations[imagespec.AnnotationRefName] = ao.ref.Name()
 	}
-	ri = mutate.AppendManifests(ri, ia)
 
-	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
+	return mutate.AppendManifests(base, ia), nil
 }
 
 // removeRefAnnotation removes an existing "org.opencontainers.image.ref.name"
@@ -461,4 +470,43 @@ func (f *OCIFileImage) RemoveManifests(matcher match.Matcher) error {
 		return err
 	}
 	return f.UpdateRootIndex(mutate.RemoveManifests(ri, matcher))
+}
+
+// ReplaceImage writes img to the SIF, replacing any existing manifest that is
+// selected by the matcher. Any blobs in the SIF that are no longer referenced
+// are removed from the SIF.
+func (f *OCIFileImage) ReplaceImage(img v1.Image, matcher match.Matcher, opts ...AppendOpt) error {
+	return f.replace(img, matcher, opts...)
+}
+
+// ReplaceIndex writes ii to the SIF, replacing any existing manifest that is
+// selected by the matcher. Any blobs in the SIF that are no longer referenced
+// are removed from the SIF.
+func (f *OCIFileImage) ReplaceIndex(ii v1.ImageIndex, matcher match.Matcher, opts ...AppendOpt) error {
+	return f.replace(ii, matcher, opts...)
+}
+
+func (f *OCIFileImage) replace(add mutate.Appendable, matcher match.Matcher, opts ...AppendOpt) error {
+	ao := appendOpts{
+		tempDir: os.TempDir(),
+	}
+	for _, opt := range opts {
+		if err := opt(&ao); err != nil {
+			return err
+		}
+	}
+
+	ri, err := f.RootIndex()
+	if err != nil {
+		return err
+	}
+
+	ri = mutate.RemoveManifests(ri, matcher)
+
+	ri, err = appendToIndex(ri, add, ao)
+	if err != nil {
+		return err
+	}
+
+	return f.UpdateRootIndex(ri, OptUpdateTempDir(ao.tempDir))
 }
