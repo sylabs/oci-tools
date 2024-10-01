@@ -6,6 +6,7 @@ package sif
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"maps"
 	"os"
@@ -24,7 +25,10 @@ import (
 
 // updateOpts accumulates update options.
 type updateOpts struct {
+	// tempDir is os.TempDir or user supplied value
 	tempDir string
+	// cacheDir created inside tempDir
+	cacheDir string
 }
 
 // UpdateOpt are used to specify options to apply when updating a SIF.
@@ -57,6 +61,11 @@ func (f *OCIFileImage) UpdateRootIndex(ii v1.ImageIndex, opts ...UpdateOpt) erro
 			return err
 		}
 	}
+	defer func() {
+		if uo.cacheDir != "" {
+			os.RemoveAll(uo.cacheDir)
+		}
+	}()
 
 	// If the existing OCI.RootIndex in the SIF matches ii, then there is nothing to do.
 	sifRootIndex, err := f.RootIndex()
@@ -84,12 +93,7 @@ func (f *OCIFileImage) UpdateRootIndex(ii v1.ImageIndex, opts ...UpdateOpt) erro
 	// Cache all new blobs referenced by the new ImageIndex and its child
 	// indices / images, which aren't already in the SIF. cachedblobs are new
 	// things to add. keepBlobs already exist in the SIF and should be kept.
-	blobCache, err := os.MkdirTemp(uo.tempDir, "")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(blobCache)
-	cachedBlobs, keepBlobs, err := cacheIndexBlobs(ii, sifBlobs, blobCache)
+	cachedBlobs, keepBlobs, err := uo.cacheIndexBlobs(ii, sifBlobs)
 	if err != nil {
 		return err
 	}
@@ -110,7 +114,7 @@ func (f *OCIFileImage) UpdateRootIndex(ii v1.ImageIndex, opts ...UpdateOpt) erro
 
 	// Write new (cached) blobs from ii into the SIF.
 	for _, b := range cachedBlobs {
-		rc, err := readCacheBlob(b, blobCache)
+		rc, err := uo.readCacheBlob(b)
 		if err != nil {
 			return err
 		}
@@ -160,7 +164,7 @@ func sifBlobs(fi *sif.FileImage) ([]v1.Hash, error) {
 // with filenames equal to their digest. The function returns two lists of blobs
 // - those that were cached (in ii but not skip), and those that were skipped
 // (in ii and skip).
-func cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash, cacheDir string) ([]v1.Hash, []v1.Hash, error) {
+func (uo *updateOpts) cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash) ([]v1.Hash, []v1.Hash, error) {
 	index, err := ii.IndexManifest()
 	if err != nil {
 		return nil, nil, err
@@ -178,7 +182,7 @@ func cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash, cacheDir string) ([]v1.Ha
 				return nil, nil, err
 			}
 			// Cache children of this ImageIndex
-			childCached, childSkipped, err := cacheIndexBlobs(childIndex, skip, cacheDir)
+			childCached, childSkipped, err := uo.cacheIndexBlobs(childIndex, skip)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -194,7 +198,7 @@ func cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash, cacheDir string) ([]v1.Ha
 				return nil, nil, err
 			}
 			rc := io.NopCloser(bytes.NewReader(rm))
-			if err := writeCacheBlob(rc, desc.Digest, cacheDir); err != nil {
+			if err := uo.writeCacheBlob(rc, desc.Digest); err != nil {
 				return nil, nil, err
 			}
 			cached = append(cached, desc.Digest)
@@ -204,7 +208,7 @@ func cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash, cacheDir string) ([]v1.Ha
 			if err != nil {
 				return nil, nil, err
 			}
-			childCached, childSkipped, err := cacheImageBlobs(childImage, skip, cacheDir)
+			childCached, childSkipped, err := uo.cacheImageBlobs(childImage, skip)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -223,7 +227,7 @@ func cacheIndexBlobs(ii v1.ImageIndex, skip []v1.Hash, cacheDir string) ([]v1.Ha
 // with filenames equal to their digest. The function returns lists of blobs
 // that were cached (in ii but not skip), and those that were skipped (in ii and
 // skipDigests).
-func cacheImageBlobs(im v1.Image, skip []v1.Hash, cacheDir string) ([]v1.Hash, []v1.Hash, error) {
+func (uo *updateOpts) cacheImageBlobs(im v1.Image, skip []v1.Hash) ([]v1.Hash, []v1.Hash, error) {
 	cached := []v1.Hash{}
 	skipped := []v1.Hash{}
 
@@ -247,7 +251,7 @@ func cacheImageBlobs(im v1.Image, skip []v1.Hash, cacheDir string) ([]v1.Hash, [
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := writeCacheBlob(rc, ld, cacheDir); err != nil {
+		if err := uo.writeCacheBlob(rc, ld); err != nil {
 			return nil, nil, err
 		}
 		cached = append(cached, ld)
@@ -266,7 +270,7 @@ func cacheImageBlobs(im v1.Image, skip []v1.Hash, cacheDir string) ([]v1.Hash, [
 			return nil, nil, err
 		}
 		rc := io.NopCloser(bytes.NewReader(c))
-		if err := writeCacheBlob(rc, mf.Config.Digest, cacheDir); err != nil {
+		if err := uo.writeCacheBlob(rc, mf.Config.Digest); err != nil {
 			return nil, nil, err
 		}
 		cached = append(cached, mf.Config.Digest)
@@ -286,7 +290,7 @@ func cacheImageBlobs(im v1.Image, skip []v1.Hash, cacheDir string) ([]v1.Hash, [
 		return nil, nil, err
 	}
 	rc := io.NopCloser(bytes.NewReader(rm))
-	if err := writeCacheBlob(rc, id, cacheDir); err != nil {
+	if err := uo.writeCacheBlob(rc, id); err != nil {
 		return nil, nil, err
 	}
 	cached = append(cached, id)
@@ -294,10 +298,17 @@ func cacheImageBlobs(im v1.Image, skip []v1.Hash, cacheDir string) ([]v1.Hash, [
 	return cached, skipped, nil
 }
 
-// writeCacheBlob writes blob content from rc into tmpDir with filename equal to
-// specified digest.
-func writeCacheBlob(rc io.ReadCloser, digest v1.Hash, cacheDir string) error {
-	path := filepath.Join(cacheDir, digest.String())
+// writeCacheBlob writes blob content from rc into a cache directory with
+// filename equal to specified digest.
+func (uo *updateOpts) writeCacheBlob(rc io.ReadCloser, digest v1.Hash) error {
+	if uo.cacheDir == "" {
+		var err error
+		if uo.cacheDir, err = os.MkdirTemp(uo.tempDir, ""); err != nil {
+			return err
+		}
+	}
+
+	path := filepath.Join(uo.cacheDir, digest.String())
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -315,10 +326,15 @@ func writeCacheBlob(rc io.ReadCloser, digest v1.Hash, cacheDir string) error {
 	return nil
 }
 
-// readCacheBlob returns a ReadCloser that will read blob content from cacheDir
-// with filename equal to specified digest.
-func readCacheBlob(digest v1.Hash, cacheDir string) (io.ReadCloser, error) {
-	path := filepath.Join(cacheDir, digest.String())
+var errNoCacheDir = errors.New("cacheDir not set")
+
+// readCacheBlob returns a ReadCloser that will read blob content from the cache
+// directory with filename equal to specified digest.
+func (uo *updateOpts) readCacheBlob(digest v1.Hash) (io.ReadCloser, error) {
+	if uo.cacheDir == "" {
+		return nil, errNoCacheDir
+	}
+	path := filepath.Join(uo.cacheDir, digest.String())
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -427,4 +443,22 @@ func removeRefAnnotation(ii v1.ImageIndex, ref name.Reference) (v1.ImageIndex, e
 			return desc
 		},
 	)
+}
+
+// RemoveBlob removes a blob from the SIF f, without modifying the rootIndex.
+func (f *OCIFileImage) RemoveBlob(hash v1.Hash) error {
+	return f.sif.DeleteObjects(sif.WithOCIBlobDigest(hash),
+		sif.OptDeleteZero(true),
+		sif.OptDeleteCompact(true))
+}
+
+// RemoveManifests modifies the SIF file associated with f so that its RootIndex
+// no longer holds manifests selected by matcher. Any blobs in the SIF that are
+// no longer referenced are removed from the SIF.
+func (f *OCIFileImage) RemoveManifests(matcher match.Matcher) error {
+	ri, err := f.RootIndex()
+	if err != nil {
+		return err
+	}
+	return f.UpdateRootIndex(mutate.RemoveManifests(ri, matcher))
 }
