@@ -1,1 +1,11 @@
-{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","size":583,"digest":"sha256:0e0b27a1f4af2f833ea9c4c04c0603a08aa3562fd5b0fbfba0d9167cf745504d"}]}
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.oci.image.index.v1+json",
+   "manifests": [
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 583,
+         "digest": "sha256:0e0b27a1f4af2f833ea9c4c04c0603a08aa3562fd5b0fbfba0d9167cf745504d"
+      }
+   ]
+}

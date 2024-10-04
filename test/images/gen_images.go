@@ -18,7 +18,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	ocimutate "github.com/sylabs/oci-tools/pkg/mutate"
@@ -56,17 +55,12 @@ func generateImages(path string) error {
 			return err
 		}
 
-		desc, err := partial.Descriptor(img)
+		lp, err := layout.Write(im.destination, empty.Index)
 		if err != nil {
 			return err
 		}
 
-		ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
-			Add:        img,
-			Descriptor: *desc,
-		})
-
-		if _, err := layout.Write(im.destination, ii); err != nil {
+		if err := lp.AppendImage(img); err != nil {
 			return err
 		}
 	}
@@ -92,7 +86,12 @@ func generateIndexes(path string) error {
 			return err
 		}
 
-		if _, err := layout.Write(im.destination, ii); err != nil {
+		lp, err := layout.Write(im.destination, empty.Index)
+		if err != nil {
+			return err
+		}
+
+		if err := lp.AppendIndex(ii); err != nil {
 			return err
 		}
 	}
@@ -418,9 +417,12 @@ func generateTARImages(path string) error {
 			}
 		}
 
-		ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
+		lp, err := layout.Write(im.destination, empty.Index)
+		if err != nil {
+			return err
+		}
 
-		if _, err := layout.Write(im.destination, ii); err != nil {
+		if err := lp.AppendImage(img); err != nil {
 			return err
 		}
 	}
@@ -458,13 +460,12 @@ func generateManyLayerImage(path string) error {
 		return err
 	}
 
-	ii := mutate.AppendManifests(empty.Index, mutate.IndexAddendum{Add: img})
-
-	if _, err := layout.Write(filepath.Join(path, "many-layers"), ii); err != nil {
+	lp, err := layout.Write(filepath.Join(path, "many-layers"), empty.Index)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	return lp.AppendImage(img)
 }
 
 var errMultipleImages = errors.New("multiple images found in index")
@@ -528,17 +529,12 @@ func generateSquashFSImages(path string) error {
 			return err
 		}
 
-		desc, err := partial.Descriptor(img)
+		lp, err := layout.Write(im.destination, empty.Index)
 		if err != nil {
 			return err
 		}
 
-		ii = mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
-			Add:        img,
-			Descriptor: *desc,
-		})
-
-		if _, err := layout.Write(im.destination, ii); err != nil {
+		if err := lp.AppendImage(img); err != nil {
 			return err
 		}
 	}
