@@ -404,6 +404,11 @@ func TestRemoveManifests(t *testing.T) {
 			base:    "hello-world-docker-v2-manifest-list",
 			matcher: match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
 		},
+		{
+			name:    "NilMatcher",
+			base:    "hello-world-docker-v2-manifest-list",
+			matcher: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -479,6 +484,12 @@ func TestReplace(t *testing.T) {
 			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
 		},
 		{
+			name:        "ReplaceImageNilMatcher",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceImage,
+			matcher:     nil,
+		},
+		{
 			name:        "ReplaceIndexManifest",
 			base:        "hello-world-docker-v2-manifest",
 			replacement: replaceIndex,
@@ -495,6 +506,12 @@ func TestReplace(t *testing.T) {
 			base:        "hello-world-docker-v2-manifest",
 			replacement: replaceIndex,
 			matcher:     match.Platforms(v1.Platform{OS: "linux", Architecture: "m68k"}),
+		},
+		{
+			name:        "ReplaceIndexNilMatcher",
+			base:        "hello-world-docker-v2-manifest",
+			replacement: replaceIndex,
+			matcher:     nil,
 		},
 	}
 	for _, tt := range tests {

@@ -5,6 +5,7 @@
 package sif_test
 
 import (
+	"errors"
 	"math/rand"
 	"path/filepath"
 	"reflect"
@@ -80,42 +81,45 @@ func Test_OCIFileImage_Image(t *testing.T) {
 		name      string
 		matcher   match.Matcher
 		wantImage v1.Image
-		wantErr   bool
+		wantErr   error
 	}{
 		{
 			name:      "MatchingRef",
 			matcher:   match.Name(imgRef.Name()),
 			wantImage: img,
-			wantErr:   false,
+			wantErr:   nil,
 		},
 		{
 			name:      "NotImage",
 			matcher:   match.Name(idxRef.Name()),
 			wantImage: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrNoMatch,
 		},
 		{
 			name:      "NonMatchingRef",
 			matcher:   match.Name("not-present:latest"),
 			wantImage: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrNoMatch,
 		},
 		{
 			name:      "MultipleMatches",
 			matcher:   match.MediaTypes(string(types.DockerManifestSchema2)),
 			wantImage: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrMultipleMatches,
+		},
+		{
+			name:      "NilMatcher",
+			matcher:   nil,
+			wantImage: nil,
+			wantErr:   sif.ErrMultipleMatches,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotImg, err := ofi.Image(tt.matcher)
 
-			if err != nil && !tt.wantErr {
-				t.Errorf("Unexpected error: %v", err)
-			}
-			if err == nil && tt.wantErr {
-				t.Errorf("Error expected, but nil returned.")
+			if got, want := err, tt.wantErr; !errors.Is(got, want) {
+				t.Fatalf("got error %v, want %v", got, want)
 			}
 
 			if tt.wantImage == nil {

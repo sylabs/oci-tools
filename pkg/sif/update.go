@@ -461,31 +461,40 @@ func (f *OCIFileImage) RemoveBlob(hash v1.Hash) error {
 		sif.OptDeleteCompact(true))
 }
 
-// RemoveManifests modifies the SIF file associated with f so that its RootIndex
-// no longer holds manifests selected by matcher. Any blobs in the SIF that are
-// no longer referenced are removed from the SIF.
+// RemoveManifests modifies the SIF file associated with f so that its
+// RootIndex no longer holds manifests selected by matcher. If m is nil, all
+// manifests are selected. Any blobs in the SIF that are no longer referenced
+// are removed from the SIF.
 func (f *OCIFileImage) RemoveManifests(matcher match.Matcher) error {
 	ri, err := f.RootIndex()
 	if err != nil {
 		return err
 	}
+
+	if matcher == nil {
+		matcher = matchAll
+	}
+
 	return f.UpdateRootIndex(mutate.RemoveManifests(ri, matcher))
 }
 
 // ReplaceImage writes img to the SIF, replacing any existing manifest that is
-// selected by the matcher. Any blobs in the SIF that are no longer referenced
-// are removed from the SIF.
+// selected by the matcher. If m is nil, all manifests are selected. Any blobs
+// in the SIF that are no longer referenced are removed from the SIF.
 func (f *OCIFileImage) ReplaceImage(img v1.Image, matcher match.Matcher, opts ...AppendOpt) error {
 	return f.replace(img, matcher, opts...)
 }
 
 // ReplaceIndex writes ii to the SIF, replacing any existing manifest that is
-// selected by the matcher. Any blobs in the SIF that are no longer referenced
-// are removed from the SIF.
+// selected by the matcher. If m is nil, all manifests are selected. Any blobs
+// in the SIF that are no longer referenced are removed from the SIF.
 func (f *OCIFileImage) ReplaceIndex(ii v1.ImageIndex, matcher match.Matcher, opts ...AppendOpt) error {
 	return f.replace(ii, matcher, opts...)
 }
 
+// replace writes add to the SIF, replacing any existing manifest that is
+// selected by the matcher. If m is nil, all manifests are selected. Any blobs
+// in the SIF that are no longer referenced are removed from the SIF.
 func (f *OCIFileImage) replace(add mutate.Appendable, matcher match.Matcher, opts ...AppendOpt) error {
 	ao := appendOpts{
 		tempDir: os.TempDir(),
@@ -494,6 +503,10 @@ func (f *OCIFileImage) replace(add mutate.Appendable, matcher match.Matcher, opt
 		if err := opt(&ao); err != nil {
 			return err
 		}
+	}
+
+	if matcher == nil {
+		matcher = matchAll
 	}
 
 	ri, err := f.RootIndex()
