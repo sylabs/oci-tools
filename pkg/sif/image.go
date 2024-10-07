@@ -23,18 +23,17 @@ type image struct {
 	rawManifest []byte
 }
 
-var (
-	ErrNoMatch         = errors.New("no match found")
-	ErrMultipleMatches = errors.New("multiple matches found")
-)
-
-// Image returns a single Image stored in f, that is selected by the provided
-// Matcher. If more than one image matches, or no image matches, an error is
-// returned.
+// Image returns a single Image stored in f, that is selected by m. If m is nil, all manifests are
+// selected. If more than one image matches, an error wrapping ErrMultipleMatches is returned. If
+// no image matches, an error wrapping ErrNoMatch is returned.
 func (f *OCIFileImage) Image(m match.Matcher, _ ...Option) (v1.Image, error) {
 	ri, err := f.RootIndex()
 	if err != nil {
 		return nil, err
+	}
+
+	if m == nil {
+		m = matchAll
 	}
 
 	matches, err := partial.FindImages(ri, m)
@@ -42,10 +41,10 @@ func (f *OCIFileImage) Image(m match.Matcher, _ ...Option) (v1.Image, error) {
 		return nil, err
 	}
 	if len(matches) > 1 {
-		return nil, ErrMultipleMatches
+		return nil, fmt.Errorf("%w", ErrMultipleMatches)
 	}
 	if len(matches) == 0 {
-		return nil, ErrNoMatch
+		return nil, fmt.Errorf("%w", ErrNoMatch)
 	}
 
 	d, err := matches[0].Digest()

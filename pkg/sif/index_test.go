@@ -5,6 +5,7 @@
 package sif_test
 
 import (
+	"errors"
 	"math/rand"
 	"path/filepath"
 	"reflect"
@@ -137,42 +138,45 @@ func Test_OCIFileImage_Index(t *testing.T) {
 		name      string
 		matcher   match.Matcher
 		wantIndex v1.ImageIndex
-		wantErr   bool
+		wantErr   error
 	}{
 		{
 			name:      "MatchingRef",
 			matcher:   match.Name(idxRef.Name()),
 			wantIndex: idx,
-			wantErr:   false,
+			wantErr:   nil,
 		},
 		{
 			name:      "NotIndex",
 			matcher:   match.Name(imgRef.Name()),
 			wantIndex: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrNoMatch,
 		},
 		{
 			name:      "NonMatchingRef",
 			matcher:   match.Name("not-present:latest"),
 			wantIndex: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrNoMatch,
 		},
 		{
 			name:      "MultipleMatches",
 			matcher:   match.MediaTypes(string(types.OCIImageIndex)),
 			wantIndex: nil,
-			wantErr:   true,
+			wantErr:   sif.ErrMultipleMatches,
+		},
+		{
+			name:      "NilMatcher",
+			matcher:   nil,
+			wantIndex: nil,
+			wantErr:   sif.ErrMultipleMatches,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotIndex, err := ofi.Index(tt.matcher)
 
-			if err != nil && !tt.wantErr {
-				t.Errorf("Unexpected error: %v", err)
-			}
-			if err == nil && tt.wantErr {
-				t.Errorf("Error expected, but nil returned.")
+			if got, want := err, tt.wantErr; !errors.Is(got, want) {
+				t.Fatalf("got error %v, want %v", got, want)
 			}
 
 			if tt.wantIndex == nil {

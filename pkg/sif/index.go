@@ -67,13 +67,17 @@ func (f *OCIFileImage) RootIndex() (v1.ImageIndex, error) {
 	}, nil
 }
 
-// Index returns a single ImageIndex stored in f, that is selected by the provided
-// Matcher. If more than one index matches, or no index matches, an error is
-// returned.
+// Index returns a single ImageIndex stored in f, that is selected by m. If m is nil, all manifests
+// are selected. If more than one index matches, an error wrapping ErrMultipleMatches is returned.
+// If no index matches, an error wrapping ErrNoMatch is returned.
 func (f *OCIFileImage) Index(m match.Matcher, _ ...Option) (v1.ImageIndex, error) {
 	ri, err := f.RootIndex()
 	if err != nil {
 		return nil, err
+	}
+
+	if m == nil {
+		m = matchAll
 	}
 
 	matches, err := partial.FindIndexes(ri, m)
@@ -81,10 +85,10 @@ func (f *OCIFileImage) Index(m match.Matcher, _ ...Option) (v1.ImageIndex, error
 		return nil, err
 	}
 	if len(matches) > 1 {
-		return nil, ErrMultipleMatches
+		return nil, fmt.Errorf("%w", ErrMultipleMatches)
 	}
 	if len(matches) == 0 {
-		return nil, ErrNoMatch
+		return nil, fmt.Errorf("%w", ErrNoMatch)
 	}
 
 	d, err := matches[0].Digest()
