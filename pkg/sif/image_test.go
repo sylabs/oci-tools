@@ -166,12 +166,6 @@ func Test_imageIndex_Image(t *testing.T) {
 			hash:           imageDigest,
 			wantDescriptor: imageDescriptor,
 		},
-		{
-			name:           "DockerManifestList",
-			ii:             imageIndexFromPath(t, "hello-world-docker-v2-manifest-list"),
-			hash:           imageDigest,
-			wantDescriptor: imageDescriptor,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -185,6 +179,51 @@ func Test_imageIndex_Image(t *testing.T) {
 			}
 
 			if d, err := img.(withDescriptor).Descriptor(); err != nil {
+				t.Error(err)
+			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
+				t.Errorf("got descriptor %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func Test_imageIndex_Index(t *testing.T) {
+	indexDigest := v1.Hash{
+		Algorithm: "sha256",
+		Hex:       "00e1ee7c898a2c393ea2fe7680938f8dcbe55e51fbf08032cf37326a677f92ed",
+	}
+	indexDescriptor := &v1.Descriptor{
+		MediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
+		Size:      2069,
+		Digest:    indexDigest,
+	}
+
+	tests := []struct {
+		name           string
+		ii             v1.ImageIndex
+		hash           v1.Hash
+		wantErr        bool
+		wantDescriptor *v1.Descriptor
+	}{
+		{
+			name:           "DockerManifestList",
+			ii:             imageIndexFromPath(t, "hello-world-docker-v2-manifest-list"),
+			hash:           indexDigest,
+			wantDescriptor: indexDescriptor,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ii, err := tt.ii.ImageIndex(tt.hash)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := validate.Index(ii); err != nil {
+				t.Error(err)
+			}
+
+			if d, err := ii.(withDescriptor).Descriptor(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
 				t.Errorf("got descriptor %+v, want %+v", got, want)
