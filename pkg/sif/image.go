@@ -24,8 +24,8 @@ type image struct {
 }
 
 var (
-	errNoMatchingImage        = errors.New("no image found matching criteria")
-	errMultipleMatchingImages = errors.New("multiple images match criteria")
+	ErrNoMatch         = errors.New("no match found")
+	ErrMultipleMatches = errors.New("multiple matches found")
 )
 
 // Image returns a single Image stored in f, that is selected by the provided
@@ -42,10 +42,10 @@ func (f *OCIFileImage) Image(m match.Matcher, _ ...Option) (v1.Image, error) {
 		return nil, err
 	}
 	if len(matches) > 1 {
-		return nil, errMultipleMatchingImages
+		return nil, ErrMultipleMatches
 	}
 	if len(matches) == 0 {
-		return nil, errNoMatchingImage
+		return nil, ErrNoMatch
 	}
 
 	d, err := matches[0].Digest()

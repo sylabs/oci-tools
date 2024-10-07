@@ -67,11 +67,6 @@ func (f *OCIFileImage) RootIndex() (v1.ImageIndex, error) {
 	}, nil
 }
 
-var (
-	errNoMatchingIndex         = errors.New("no index found matching criteria")
-	errMultipleMatchingIndices = errors.New("multiple indices match criteria")
-)
-
 // Index returns a single ImageIndex stored in f, that is selected by the provided
 // Matcher. If more than one index matches, or no index matches, an error is
 // returned.
@@ -86,10 +81,10 @@ func (f *OCIFileImage) Index(m match.Matcher, _ ...Option) (v1.ImageIndex, error
 		return nil, err
 	}
 	if len(matches) > 1 {
-		return nil, errMultipleMatchingIndices
+		return nil, ErrMultipleMatches
 	}
 	if len(matches) == 0 {
-		return nil, errNoMatchingIndex
+		return nil, ErrNoMatch
 	}
 
 	d, err := matches[0].Digest()
