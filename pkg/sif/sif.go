@@ -8,6 +8,8 @@ import (
 	"io"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/sylabs/sif/v2/pkg/sif"
 )
 
@@ -52,4 +54,15 @@ func (f *OCIFileImage) Offset(h v1.Hash) (int64, error) {
 	}
 
 	return d.Offset(), nil
+}
+
+// FindManifests finds the manifests stored in f that are selected by m. If m is nil, all manifests
+// are selected.
+func (f *OCIFileImage) FindManifests(m match.Matcher, _ ...Option) ([]v1.Descriptor, error) {
+	ri, err := f.RootIndex()
+	if err != nil {
+		return nil, err
+	}
+
+	return partial.FindManifests(ri, matchAllIfNil(m))
 }
