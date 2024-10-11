@@ -32,11 +32,7 @@ func (f *OCIFileImage) Image(m match.Matcher, _ ...Option) (v1.Image, error) {
 		return nil, err
 	}
 
-	if m == nil {
-		m = matchAll
-	}
-
-	matches, err := partial.FindImages(ri, m)
+	matches, err := partial.FindImages(ri, matchAllIfNil(m))
 	if err != nil {
 		return nil, err
 	}
