@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/match"
 )
 
 var (
@@ -16,3 +17,11 @@ var (
 )
 
 func matchAll(v1.Descriptor) bool { return true }
+
+// matchAllIfNil returns m if not nil, or a Matcher that matches all descriptors otherwise.
+func matchAllIfNil(m match.Matcher) match.Matcher {
+	if m != nil {
+		return m
+	}
+	return matchAll
+}

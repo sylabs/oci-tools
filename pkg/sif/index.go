@@ -76,11 +76,7 @@ func (f *OCIFileImage) Index(m match.Matcher, _ ...Option) (v1.ImageIndex, error
 		return nil, err
 	}
 
-	if m == nil {
-		m = matchAll
-	}
-
-	matches, err := partial.FindIndexes(ri, m)
+	matches, err := partial.FindIndexes(ri, matchAllIfNil(m))
 	if err != nil {
 		return nil, err
 	}

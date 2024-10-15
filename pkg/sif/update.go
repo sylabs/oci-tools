@@ -471,11 +471,7 @@ func (f *OCIFileImage) RemoveManifests(matcher match.Matcher) error {
 		return err
 	}
 
-	if matcher == nil {
-		matcher = matchAll
-	}
-
-	return f.UpdateRootIndex(mutate.RemoveManifests(ri, matcher))
+	return f.UpdateRootIndex(mutate.RemoveManifests(ri, matchAllIfNil(matcher)))
 }
 
 // ReplaceImage writes img to the SIF, replacing any existing manifest that is
@@ -505,16 +501,12 @@ func (f *OCIFileImage) replace(add mutate.Appendable, matcher match.Matcher, opt
 		}
 	}
 
-	if matcher == nil {
-		matcher = matchAll
-	}
-
 	ri, err := f.RootIndex()
 	if err != nil {
 		return err
 	}
 
-	ri = mutate.RemoveManifests(ri, matcher)
+	ri = mutate.RemoveManifests(ri, matchAllIfNil(matcher))
 
 	ri, err = appendToIndex(ri, add, ao)
 	if err != nil {
