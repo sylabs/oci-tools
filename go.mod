@@ -1,6 +1,7 @@
 module github.com/sylabs/oci-tools
 
-go 1.22.5
+go 1.22.8
+
 require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/opencontainers/image-spec v1.1.0
