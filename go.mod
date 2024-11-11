@@ -6,7 +6,7 @@ require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sebdah/goldie/v2 v2.5.5
-	github.com/sylabs/sif/v2 v2.19.2
+	github.com/sylabs/sif/v2 v2.20.0
 )
 
 require (
