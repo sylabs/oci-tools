@@ -36,6 +36,7 @@ linters:
     - gosimple
     - govet
     - grouper
+    - iface
     - ineffassign
     - interfacebloat
     - intrange
@@ -49,6 +50,7 @@ linters:
     - nonamedreturns
     - prealloc
     - reassign
+    - recvcheck
     - revive
     - staticcheck
     - stylecheck
