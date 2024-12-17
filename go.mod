@@ -1,6 +1,6 @@
 module github.com/sylabs/oci-tools
 
-go 1.22.8
+go 1.22.0
 
 require (
 	github.com/google/go-containerregistry v0.20.2
