@@ -3,6 +3,7 @@ module github.com/sylabs/oci-tools
 go 1.22.0
 
 require (
+	github.com/containerd/platforms v0.2.1
 	github.com/google/go-containerregistry v0.20.2
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sebdah/goldie/v2 v2.5.5
@@ -10,6 +11,7 @@ require (
 )
 
 require (
+	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/docker/cli v27.1.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
@@ -22,8 +24,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.1 // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
