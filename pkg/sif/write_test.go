@@ -1,4 +1,4 @@
-// Copyright 2023 Sylabs Inc. All rights reserved.
+// Copyright 2023-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	ggcrempty "github.com/google/go-containerregistry/pkg/v1/empty"
+	ggcrmutate "github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sebdah/goldie/v2"
 	"github.com/sylabs/oci-tools/pkg/sif"
 	"github.com/sylabs/oci-tools/test"
@@ -26,7 +28,9 @@ func TestWrite(t *testing.T) {
 	}{
 		{
 			name: "DockerManifest",
-			ii:   corpus.ImageIndex(t, "hello-world-docker-v2-manifest"),
+			ii: ggcrmutate.AppendManifests(
+				ggcrempty.Index,
+				ggcrmutate.IndexAddendum{Add: corpus.Image(t, "hello-world-docker-v2-manifest")}),
 		},
 		{
 			name: "DockerManifestList",
@@ -34,11 +38,15 @@ func TestWrite(t *testing.T) {
 		},
 		{
 			name: "ManyLayers",
-			ii:   corpus.ImageIndex(t, "many-layers"),
+			ii: ggcrmutate.AppendManifests(
+				ggcrempty.Index,
+				ggcrmutate.IndexAddendum{Add: corpus.Image(t, "many-layers")}),
 		},
 		{
 			name: "SpareDescriptor",
-			ii:   corpus.ImageIndex(t, "hello-world-docker-v2-manifest"),
+			ii: ggcrmutate.AppendManifests(
+				ggcrempty.Index,
+				ggcrmutate.IndexAddendum{Add: corpus.Image(t, "hello-world-docker-v2-manifest")}),
 			opts: []sif.WriteOpt{
 				sif.OptWriteWithSpareDescriptorCapacity(1),
 			},
