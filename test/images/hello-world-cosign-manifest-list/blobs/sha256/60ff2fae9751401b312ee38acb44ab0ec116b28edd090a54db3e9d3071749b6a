@@ -1,0 +1,1 @@
+{"critical":{"identity":{"docker-reference":"127.0.0.1:44949/hello-world-docker-v2-manifest-list"},"image":{"docker-manifest-digest":"sha256:3209b9aec056b296ea55b2af7757d078bf92e55a3ea29c5fdef5c785bcef09c4"},"type":"cosign container image signature"},"optional":null}
