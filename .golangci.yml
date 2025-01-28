@@ -19,6 +19,7 @@ linters:
     - errname
     - errorlint
     - exhaustive
+    - exptostd
     - forcetypeassert
     - gochecknoglobals
     - gochecknoinits
@@ -45,6 +46,7 @@ linters:
     - mirror
     - misspell
     - nakedret
+    - nilnesserr
     - noctx
     - nolintlint
     - nonamedreturns
@@ -60,4 +62,5 @@ linters:
     - unconvert
     - unparam
     - unused
+    - usetesting
     - whitespace
