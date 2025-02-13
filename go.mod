@@ -1,6 +1,6 @@
 module github.com/sylabs/oci-tools
 
-go 1.22.7
+go 1.23.0
 
 require (
 	github.com/containerd/platforms v0.2.1
