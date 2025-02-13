@@ -8,7 +8,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sebdah/goldie/v2 v2.5.5
 	github.com/sigstore/cosign/v2 v2.4.2
-	github.com/sylabs/sif/v2 v2.20.2
+	github.com/sylabs/sif/v2 v2.21.0
 )
 
 require (
