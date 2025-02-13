@@ -71,6 +71,21 @@ func TestApply(t *testing.T) {
 				SetConfig(&v1.ConfigFile{Author: "Author"}, types.DockerConfigJSON),
 			},
 		},
+		{
+			name: "SetConfigEmpty",
+			base: img,
+			ms: []Mutation{
+				SetConfig(struct{}{}, "application/vnd.oci.empty.v1+json"),
+			},
+		},
+		{
+			name: "SetArtifactType",
+			base: img,
+			ms: []Mutation{
+				SetConfig(struct{}{}, "application/vnd.oci.empty.v1+json"),
+				SetArtifactType("application/vnd.sylabs.container"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
