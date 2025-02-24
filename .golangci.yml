@@ -56,7 +56,6 @@ linters:
     - revive
     - staticcheck
     - stylecheck
-    - tenv
     - thelper
     - typecheck
     - unconvert
