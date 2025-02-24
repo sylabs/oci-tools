@@ -1,4 +1,4 @@
-// Copyright 2023 Sylabs Inc. All rights reserved.
+// Copyright 2023-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -66,7 +66,9 @@ func TestLayer_Descriptor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if d, err := tt.l.(*sif.Layer).Descriptor(); err != nil {
+			if l, ok := tt.l.(*sif.Layer); !ok {
+				t.Errorf("unexpected layer type: %T", tt.l)
+			} else if d, err := l.Descriptor(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
 				t.Errorf("got descriptor %+v, want %+v", got, want)
@@ -92,7 +94,9 @@ func TestLayer_Offset(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if d, err := tt.l.(*sif.Layer).Offset(); err != nil {
+			if l, ok := tt.l.(*sif.Layer); !ok {
+				t.Errorf("unexpected layer type: %T", tt.l)
+			} else if d, err := l.Offset(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantOffset; got != want {
 				t.Errorf("got offset %v, want %v", got, want)

@@ -1,4 +1,4 @@
-// Copyright 2023 Sylabs Inc. All rights reserved.
+// Copyright 2023-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -83,7 +83,9 @@ func TestImageIndexFromFileImage(t *testing.T) {
 				t.Error(err)
 			}
 
-			if d, err := ii.(withDescriptor).Descriptor(); err != nil {
+			if wd, ok := ii.(withDescriptor); !ok {
+				t.Error("withDescriptor interface not satisfied")
+			} else if d, err := wd.Descriptor(); err != nil {
 				t.Error(err)
 			} else if got, want := d, tt.wantDescriptor; !reflect.DeepEqual(got, want) {
 				t.Errorf("got descriptor %+v, want %+v", got, want)
