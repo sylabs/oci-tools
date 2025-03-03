@@ -5,7 +5,7 @@ go 1.23.4
 require (
 	github.com/containerd/platforms v0.2.1
 	github.com/google/go-containerregistry v0.20.3
-	github.com/opencontainers/image-spec v1.1.0
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/sebdah/goldie/v2 v2.5.5
 	github.com/sigstore/cosign/v2 v2.4.3
 	github.com/sylabs/sif/v2 v2.21.1
