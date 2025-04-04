@@ -1,8 +1,7 @@
-run:
-  timeout: 5m
+version: "2"
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bidichk
@@ -29,12 +28,9 @@ linters:
     - gocyclo
     - godot
     - godox
-    - gofumpt
-    - goimports
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - grouper
     - iface
@@ -55,11 +51,20 @@ linters:
     - recvcheck
     - revive
     - staticcheck
-    - stylecheck
     - thelper
-    - typecheck
     - unconvert
     - unparam
     - unused
     - usetesting
     - whitespace
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

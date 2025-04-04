@@ -55,7 +55,7 @@ type getOpts struct {
 // source.
 type GetOpt func(*getOpts) error
 
-// GetPlatform overrides the platform when choosing an image.
+// GetWithPlatform overrides the platform when choosing an image.
 func GetWithPlatform(p v1.Platform) GetOpt {
 	return func(o *getOpts) error {
 		o.platform = &p
@@ -63,7 +63,7 @@ func GetWithPlatform(p v1.Platform) GetOpt {
 	}
 }
 
-// GetDigest sets the digest of the image or index to retrieve.
+// GetWithDigest sets the digest of the image or index to retrieve.
 func GetWithDigest(d v1.Hash) GetOpt {
 	return func(o *getOpts) error {
 		o.digest = &d
@@ -71,7 +71,7 @@ func GetWithDigest(d v1.Hash) GetOpt {
 	}
 }
 
-// GetReference sets the name.ref of the image or index to retrieve.
+// GetWithReference sets the name.ref of the image or index to retrieve.
 func GetWithReference(r name.Reference) GetOpt {
 	return func(o *getOpts) error {
 		o.reference = r
