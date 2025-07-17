@@ -5,7 +5,6 @@
 package sourcesink
 
 import (
-	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -128,7 +127,7 @@ func TestSIFGet(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SIFFromPath() error = %v", err)
 			}
-			d, err := s.Get(context.Background(), tt.opts...)
+			d, err := s.Get(t.Context(), tt.opts...)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("Get() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -170,7 +169,7 @@ func TestSIFDescriptorImage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SIFFromPath() error = %v", err)
 			}
-			d, err := s.Get(context.Background())
+			d, err := s.Get(t.Context())
 			if err != nil {
 				t.Fatalf(".Get() error = %v", err)
 			}
@@ -210,7 +209,7 @@ func TestSIFDescriptorImageIndex(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SIFFromPath() error = %v", err)
 			}
-			d, err := s.Get(context.Background())
+			d, err := s.Get(t.Context())
 			if err != nil {
 				t.Fatalf(".Get() error = %v", err)
 			}
@@ -289,7 +288,7 @@ func TestSIFWrite(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SIFEmpty() error = %v", err)
 			}
-			err = s.Write(context.Background(), tt.write, tt.opts...)
+			err = s.Write(t.Context(), tt.write, tt.opts...)
 			if err != nil {
 				t.Fatalf(".Write() error = %v", err)
 			}
@@ -356,7 +355,7 @@ func TestSIFBlob(t *testing.T) {
 			if err != nil {
 				t.Fatalf("OCIFromPath() error = %v", err)
 			}
-			rc, err := s.Blob(context.Background(), tt.opts...)
+			rc, err := s.Blob(t.Context(), tt.opts...)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("Get() error = %v, wantErr %v", err, tt.wantErr)
 			}
