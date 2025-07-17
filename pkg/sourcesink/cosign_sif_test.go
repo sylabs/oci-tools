@@ -5,7 +5,6 @@
 package sourcesink
 
 import (
-	"context"
 	"testing"
 
 	cosignoci "github.com/sigstore/cosign/v2/pkg/oci"
@@ -43,7 +42,7 @@ func Test_sifDescriptor_CosignImages(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			d, err := s.Get(context.Background())
+			d, err := s.Get(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +52,7 @@ func Test_sifDescriptor_CosignImages(t *testing.T) {
 				t.Fatal("could not upgrade Descriptor to SignedDescriptor")
 			}
 
-			got, err := sd.CosignImages(context.Background(), tt.recursive)
+			got, err := sd.CosignImages(t.Context(), tt.recursive)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,7 +92,7 @@ func Test_sifDescriptor_SignedImage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			d, err := s.Get(context.Background())
+			d, err := s.Get(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +102,7 @@ func Test_sifDescriptor_SignedImage(t *testing.T) {
 				t.Fatal("could not upgrade Descriptor to SignedDescriptor")
 			}
 
-			si, err := sd.SignedImage(context.Background())
+			si, err := sd.SignedImage(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +166,7 @@ func Test_sifDescriptor_SignedImageIndex(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			d, err := s.Get(context.Background())
+			d, err := s.Get(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -177,7 +176,7 @@ func Test_sifDescriptor_SignedImageIndex(t *testing.T) {
 				t.Fatal("could not upgrade Descriptor to SignedDescriptor")
 			}
 
-			sii, err := sd.SignedImageIndex(context.Background())
+			sii, err := sd.SignedImageIndex(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
