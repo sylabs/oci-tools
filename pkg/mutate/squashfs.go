@@ -1,10 +1,11 @@
-// Copyright 2023 Sylabs Inc. All rights reserved.
+// Copyright 2023-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
 package mutate
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ type squashfsConverter struct {
 	args            []string // Arguments required for converter program.
 	dir             string   // Working directory.
 	convertWhiteout bool     // Convert whiteout markers from AUFS -> OverlayFS
+	ctx             context.Context
 }
 
 // SquashfsConverterOpt are used to specify squashfs converter options.
@@ -73,6 +75,7 @@ func SquashfsLayer(base v1.Layer, dir string, opts ...SquashfsConverterOpt) (v1.
 	c := squashfsConverter{
 		dir:             dir,
 		convertWhiteout: true,
+		ctx:             context.Background(),
 	}
 
 	for _, opt := range opts {
@@ -132,7 +135,7 @@ func (c *squashfsConverter) makeSquashfs(r io.Reader) (string, error) {
 	path := filepath.Join(dir, "layer.sqfs")
 
 	//nolint:gosec // Arguments are created programatically.
-	cmd := exec.Command(c.converter, append(c.args, path)...)
+	cmd := exec.CommandContext(c.ctx, c.converter, append(c.args, path)...)
 	cmd.Stdin = r
 
 	if out, err := cmd.CombinedOutput(); err != nil {
