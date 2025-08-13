@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '~1.24.0'
+          go-version: '~1.25.0'
       - run: go mod tidy -diff
 
   check-test-corpus:
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '~1.24.0'
+          go-version: '~1.25.0'
       - run: sudo apt-get install -qy squashfs-tools-ng
       - run: go run ./test/images/gen_images.go ./test/images
       - run: git diff --exit-code --
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '~1.24.0'
+          go-version: '~1.25.0'
       - uses: goreleaser/goreleaser-action@v6
         with:
           args: check
