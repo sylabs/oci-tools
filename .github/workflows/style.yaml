@@ -25,4 +25,4 @@ jobs:
           go-version: '~1.25.0'
       - uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.3
+          version: v2.4
