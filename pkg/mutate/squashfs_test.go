@@ -1,4 +1,4 @@
-// Copyright 2023 Sylabs Inc. All rights reserved.
+// Copyright 2023-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -39,7 +39,7 @@ func diffSquashFS(tb testing.TB, pathA, pathB string, diffArgs ...string) {
 	args := []string{"-a", pathA, "-b", pathB}
 	args = append(args, diffArgs...)
 
-	cmd := exec.Command("sqfsdiff", args...)
+	cmd := exec.CommandContext(tb.Context(), "sqfsdiff", args...)
 
 	if out, err := cmd.CombinedOutput(); err != nil {
 		tb.Log(string(out))

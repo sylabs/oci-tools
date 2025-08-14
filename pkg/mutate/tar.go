@@ -1,4 +1,4 @@
-// Copyright 2024 Sylabs Inc. All rights reserved.
+// Copyright 2024-2025 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@ package mutate
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ type tarConverter struct {
 	converter       string // Path to converter program.
 	dir             string // Working directory.
 	convertWhiteout bool   // Convert whiteout markers from OverlayFS -> AUFS
+	ctx             context.Context
 }
 
 // TarConverterOpt are used to specify tar converter options.
@@ -83,6 +85,7 @@ func TarFromSquashfsLayer(base v1.Layer, opts ...TarConverterOpt) (tarball.Opene
 
 	c := tarConverter{
 		convertWhiteout: true,
+		ctx:             context.Background(),
 	}
 
 	for _, opt := range opts {
@@ -121,7 +124,7 @@ func (c *tarConverter) makeTAR(r io.Reader) (io.ReadCloser, error) {
 
 	pr, pw := io.Pipe()
 	//nolint:gosec // Arguments are created programatically.
-	cmd := exec.Command(c.converter, sqfsFile.Name())
+	cmd := exec.CommandContext(c.ctx, c.converter, sqfsFile.Name())
 	cmd.Stdout = pw
 	errBuff := bytes.Buffer{}
 	cmd.Stderr = &errBuff
