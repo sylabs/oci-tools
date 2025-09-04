@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '~1.25.0'
       - run: go mod tidy -diff
@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '~1.25.0'
       - run: sudo apt-get install -qy squashfs-tools-ng
@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '~1.25.0'
       - uses: goreleaser/goreleaser-action@v6
