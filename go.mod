@@ -6,7 +6,7 @@ require (
 	github.com/containerd/platforms v0.2.1
 	github.com/google/go-containerregistry v0.20.6
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/sebdah/goldie/v2 v2.7.1
+	github.com/sebdah/goldie/v2 v2.8.0
 	github.com/sigstore/cosign/v2 v2.6.1
 	github.com/sylabs/sif/v2 v2.22.0
 )
