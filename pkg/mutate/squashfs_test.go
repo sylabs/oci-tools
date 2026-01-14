@@ -1,4 +1,4 @@
-// Copyright 2023-2025 Sylabs Inc. All rights reserved.
+// Copyright 2023-2026 Sylabs Inc. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -36,7 +36,8 @@ func testLayer(tb testing.TB, name string, digest v1.Hash) v1.Layer {
 func diffSquashFS(tb testing.TB, pathA, pathB string, diffArgs ...string) {
 	tb.Helper()
 
-	args := []string{"-a", pathA, "-b", pathB}
+	args := make([]string, 0, 4+len(diffArgs))
+	args = append(args, "-a", pathA, "-b", pathB)
 	args = append(args, diffArgs...)
 
 	cmd := exec.CommandContext(tb.Context(), "sqfsdiff", args...)
