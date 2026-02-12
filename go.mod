@@ -8,7 +8,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/sebdah/goldie/v2 v2.8.0
 	github.com/sigstore/cosign/v2 v2.6.2
-	github.com/sylabs/sif/v2 v2.22.0
+	github.com/sylabs/sif/v2 v2.23.0
 )
 
 require (
@@ -76,7 +76,7 @@ require (
 	github.com/sigstore/protobuf-specs v0.5.0 // indirect
 	github.com/sigstore/rekor v1.4.3 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.0.1 // indirect
-	github.com/sigstore/sigstore v1.10.3 // indirect
+	github.com/sigstore/sigstore v1.10.4 // indirect
 	github.com/sigstore/sigstore-go v1.1.4 // indirect
 	github.com/sigstore/timestamp-authority/v2 v2.0.3 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
