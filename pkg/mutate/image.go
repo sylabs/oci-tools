@@ -17,11 +17,12 @@ import (
 )
 
 type image struct {
-	base               v1.Image
-	overrides          []v1.Layer
-	history            *v1.History
-	configFileOverride any
-	configTypeOverride types.MediaType
+	base                 v1.Image
+	overrides            []v1.Layer
+	history              *v1.History
+	configFileOverride   any
+	configTypeOverride   types.MediaType
+	artifactTypeOverride string
 
 	computed      bool
 	diffIDs       []v1.Hash
@@ -86,6 +87,7 @@ func (img *image) populate() error {
 
 	configFile := img.configFileOverride
 	configType := img.configTypeOverride
+	artifactType := img.artifactTypeOverride
 
 	// If configFile is not overridden, populate from the base image.
 	if configFile == nil {
@@ -149,6 +151,10 @@ func (img *image) populate() error {
 
 	if manifest.Config.Data != nil {
 		manifest.Config.Data = config
+	}
+
+	if artifactType != "" {
+		manifest.Config.ArtifactType = artifactType
 	}
 
 	img.computed = true
