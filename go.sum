@@ -341,8 +341,8 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/sylabs/sif/v2 v2.23.0 h1:VWJC7iryINdIgyIK8EdxMCJkx8EDPVlvFaskgY+ruFk=
-github.com/sylabs/sif/v2 v2.23.0/go.mod h1:0UJk7MMSQS2n/95yYd+CvAfK7K2mE0aWHRYYybd+ouw=
+github.com/sylabs/sif/v2 v2.24.0 h1:1wB5uMDUQYjk8AckTySaDcP9YnpMb1LyDRr1Jt9A10w=
+github.com/sylabs/sif/v2 v2.24.0/go.mod h1:DbXWqWZ1hdLSU+K9ipdds5AmZeHWsyxCOj/oQakBa88=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
 github.com/theupdateframework/go-tuf v0.7.0/go.mod h1:uEB7WSY+7ZIugK6R1hiBMBjQftaFzn7ZCDJcp1tCUug=
 github.com/theupdateframework/go-tuf/v2 v2.3.0 h1:gt3X8xT8qu/HT4w+n1jgv+p7koi5ad8XEkLXXZqG9AA=
