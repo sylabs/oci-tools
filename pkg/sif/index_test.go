@@ -52,10 +52,10 @@ func TestImageIndexFromFileImage(t *testing.T) {
 			f:    fileImageFromPath(t, "hello-world-docker-v2-manifest"),
 			wantDescriptor: &v1.Descriptor{
 				MediaType: "application/vnd.oci.image.index.v1+json",
-				Size:      444,
+				Size:      519,
 				Digest: v1.Hash{
 					Algorithm: "sha256",
-					Hex:       "61a28aa82cdc48531d7dc366298507a4e896cebce1e01ff391626edd968f6d58",
+					Hex:       "228bcc48dba14971ae4b9834c8367d0ff7877647d5c5f555fc2e844299fc1531",
 				},
 			},
 		},

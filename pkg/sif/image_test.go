@@ -155,6 +155,7 @@ func Test_imageIndex_Image(t *testing.T) {
 			OS:           "linux",
 			Variant:      "v8",
 		},
+		ArtifactType: "application/vnd.docker.container.image.v1+json",
 	}
 
 	tests := []struct {
