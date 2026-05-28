@@ -154,7 +154,7 @@ func (img *image) populate() error {
 	}
 
 	if artifactType != "" {
-		manifest.Config.ArtifactType = artifactType
+		manifest.ArtifactType = artifactType
 	}
 
 	img.computed = true
