@@ -28,7 +28,7 @@ linters:
     - gocyclo
     - godot
     - godox
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - govet
@@ -63,6 +63,9 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+  settings:
+    goconst:
+      ignore-tests: true
 
 formatters:
   enable:
