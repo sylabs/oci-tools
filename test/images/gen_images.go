@@ -166,6 +166,7 @@ func generateTARImages(path string) error {
 		//	a/b
 		//	a/b/bar
 		{
+			//nolint:goconst
 			layers: [][]tarEntry{
 				{
 					{Typeflag: tar.TypeDir, Name: "a/"},
@@ -186,6 +187,7 @@ func generateTARImages(path string) error {
 		//	a/
 		//	a/bar
 		{
+			//nolint:goconst
 			layers: [][]tarEntry{
 				{
 					{Typeflag: tar.TypeDir, Name: "a/"},
